@@ -1,0 +1,6 @@
+data/
+src/__pycache__/
+scripts/AMCParser
+scripts/__pycache__/
+videos/
+.env

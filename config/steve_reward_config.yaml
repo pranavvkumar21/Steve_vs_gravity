@@ -1,0 +1,13 @@
+forward_velocity:
+  slope: -3.0
+  weight: 2.0
+lateral_velocity:
+  slope: -3.0
+  weight: 2.0
+angular_velocity:
+  slope: -1.5
+  weight: 1.5
+balance:
+  vz_slope: -2.5
+  wxy_slope: -2.0
+  weight: 1.3

@@ -1,0 +1,80 @@
+scene:
+  num_envs: 1
+  rows: 1
+  cols: 1
+  env_spacing: 30.0
+  joint_names:
+    # Torso joints
+    - 'lower_waist:0'
+    - 'lower_waist:1'
+    - 'pelvis'
+    # Right arm joints
+    - 'right_upper_arm:0'
+    - 'right_upper_arm:2'
+    - 'right_lower_arm'
+    # Left arm joints
+    - 'left_upper_arm:0'
+    - 'left_upper_arm:2'
+    - 'left_lower_arm'
+    # Right leg joints (hip)
+    - 'right_thigh:0'
+    - 'right_thigh:1'
+    - 'right_thigh:2'
+    # Left leg joints (hip)
+    - 'left_thigh:0'
+    - 'left_thigh:1'
+    - 'left_thigh:2'
+    # Knee joints
+    - 'right_shin'
+    - 'left_shin'
+    # Ankle joints
+    - 'right_foot:0'
+    - 'right_foot:1'
+    - 'left_foot:0'
+    - 'left_foot:1'
+  body_contact_links:
+    - torso
+    - head
+    - lower_waist
+    - pelvis
+    - right_upper_arm
+    - left_upper_arm
+    - right_lower_arm
+    - left_lower_arm
+    - right_thigh
+    - left_thigh
+    - right_hand
+    - left_hand
+    - right_shin
+    - left_shin
+env_config:
+  sim_dt: 0.001
+  decimation: 10
+  max_episode_length: 1000
+  episode_length_s: 10
+  seed: 42
+train:
+  num_envs: 4096
+  num_iterations: 400
+  rows: 10
+  cols: 10
+  total_timesteps: 98e6
+  n_steps: 128
+  batch_size: 65_536
+  learning_rate:
+    start: 3.5e-4
+    end: 3.0e-4
+    end_fraction: 1.0
+  clip_range: 0.2
+  gamma: 0.992
+  ent_coef: 0.0025
+  n_epochs: 10
+  target_kl: 0.015
+eval:
+  num_envs: 1
+  rows: 1
+  cols: 1
+
+save_config:
+  save_path: ../../models/isaac_models/
+  save_prefix: ruu_ppo_model
