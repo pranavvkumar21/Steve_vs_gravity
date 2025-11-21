@@ -159,9 +159,14 @@ def joint_name_to_id(joints):
 def get_mapped_joint_angles_as_array(joint_angles: np.ndarray, name_to_id: dict, joint_mapping=JOINT_MAPPING):
     n_joints = len(joint_mapping)
     n_frames = len(joint_angles)
-    angles_array = np.zeros((n_frames, n_joints))  # nframes x njoints
+    angles_array = np.zeros((n_frames, n_joints))
     for f in range(n_frames):
-        for target_joint_name, (source_joint_name, dof) in joint_mapping.items():
+        for target_joint_name, mapping in joint_mapping.items():
+            # Handle None mappings (ankle_y)
+            if mapping is None:
+                continue
+            
+            source_joint_name, dof = mapping
             if source_joint_name in name_to_id:
                 source_joint_id = name_to_id[source_joint_name]
                 target_joint_id = list(joint_mapping.keys()).index(target_joint_name)
@@ -172,6 +177,30 @@ def get_mapped_joint_angles_as_array(joint_angles: np.ndarray, name_to_id: dict,
                 elif dof == "rz":
                     angles_array[f, target_joint_id] = joint_angles[f, source_joint_id, 2]
     return angles_array
+
+
+def get_mapped_limits_as_array(joints, joint_mapping=JOINT_MAPPING):
+    n_joints = len(joint_mapping)
+    limits_array = np.zeros((n_joints, 2))
+    for target_joint_name, mapping in joint_mapping.items():
+        # Handle None mappings (ankle_y)
+        if mapping is None:
+            limits_array[list(joint_mapping.keys()).index(target_joint_name)] = [0.0, 0.0]
+            continue
+            
+        source_joint_name, dof = mapping
+        if source_joint_name in joints:
+            joint = joints[source_joint_name]
+            target_joint_id = list(joint_mapping.keys()).index(target_joint_name)
+            if dof == "rx":
+                limits_array[target_joint_id] = joint.limits[0]
+            elif dof == "ry":
+                limits_array[target_joint_id] = joint.limits[1]
+            elif dof == "rz":
+                limits_array[target_joint_id] = joint.limits[2]
+    limits_array = np.deg2rad(limits_array)
+    return limits_array
+
 
 def get_joint_velocities(mapped_joint_angles: np.ndarray, fps: int):
     n_frames = len(mapped_joint_angles)
@@ -253,7 +282,7 @@ def main():
     print(f"Mapped limits shape: {mapped_limits_array.shape}")
     print(f"Mapped limits for first joint: {mapped_limits_array[0]}")
     # Example: Invert joint angles for left and right shin and lower arm
-    inverted_joint_names = ['left_shin', 'right_shin', 'left_lower_arm', 'right_lower_arm']
+    inverted_joint_names = ['left_knee', 'right_knee', 'left_elbow', 'right_elbow']
     # inverted_joint_names = JOINT_MAPPING.keys()  # Invert all joints
     mapped_joint_angles, mapped_limits_array = invert_joint_angles(mapped_joint_angles, mapped_limits_array, inverted_joint_names)
     print(f"Inverted joint angles for joints: {inverted_joint_names}")

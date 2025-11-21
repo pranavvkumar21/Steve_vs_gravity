@@ -4,38 +4,46 @@ scene:
   cols: 1
   env_spacing: 30.0
   joint_names:
-    # Torso joints
-    - 'lower_waist:0'
-    - 'lower_waist:1'
-    - 'pelvis'
+    # Torso/Abdomen joints (3 DOF)
+    - 'abdomen_x'
+    - 'abdomen_y'
+    - 'abdomen_z'
+    # Neck joints (3 DOF) - NEW in this model
+    - 'neck_x'
+    - 'neck_y'
+    - 'neck_z'
     # Right arm joints
-    - 'right_upper_arm:0'
-    - 'right_upper_arm:2'
-    - 'right_lower_arm'
+    - 'right_shoulder_x'
+    - 'right_shoulder_y'
+    - 'right_shoulder_z'
+    - 'right_elbow'
     # Left arm joints
-    - 'left_upper_arm:0'
-    - 'left_upper_arm:2'
-    - 'left_lower_arm'
+    - 'left_shoulder_x'
+    - 'left_shoulder_y'
+    - 'left_shoulder_z'
+    - 'left_elbow'
     # Right leg joints (hip)
-    - 'right_thigh:0'
-    - 'right_thigh:1'
-    - 'right_thigh:2'
+    - 'right_hip_x'
+    - 'right_hip_y'
+    - 'right_hip_z'
+    - 'right_knee'
     # Left leg joints (hip)
-    - 'left_thigh:0'
-    - 'left_thigh:1'
-    - 'left_thigh:2'
-    # Knee joints
-    - 'right_shin'
-    - 'left_shin'
-    # Ankle joints
-    - 'right_foot:0'
-    - 'right_foot:1'
-    - 'left_foot:0'
-    - 'left_foot:1'
+    - 'left_hip_x'
+    - 'left_hip_y'
+    - 'left_hip_z'
+    - 'left_knee'
+    # Ankle joints (3 DOF each)
+    - 'right_ankle_x'
+    - 'right_ankle_y'
+    - 'right_ankle_z'
+    - 'left_ankle_x'
+    - 'left_ankle_y'
+    - 'left_ankle_z'
   body_contact_links:
+    # Note: Verify these body names by printing env.scene["steve"].data.body_names
     - torso
     - head
-    - lower_waist
+    - abdomen
     - pelvis
     - right_upper_arm
     - left_upper_arm
@@ -47,6 +55,8 @@ scene:
     - left_hand
     - right_shin
     - left_shin
+    - right_foot
+    - left_foot
 env_config:
   sim_dt: 0.001
   decimation: 10

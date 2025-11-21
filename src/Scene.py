@@ -8,30 +8,33 @@ from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from isaaclab.sensors import ContactSensorCfg
 from pathlib import Path
 import yaml
-from isaaclab_assets import HUMANOID_CFG
+from isaaclab_assets import HUMANOID_28_CFG  # Changed from HUMANOID_CFG
+
 
 ROOT = Path(__file__).resolve().parent.parent
 with open(ROOT / "config" / "steve_config.yaml", 'r') as f:
     steve_config = yaml.safe_load(f)
 
-# Create pattern without the $ anchor
 pattern = "(" + "|".join(steve_config["scene"]["body_contact_links"]) + ")"
+
 
 class Steve_SceneCfg(InteractiveSceneCfg):
     """Configuration for the Steve scene."""
     
-    # Make sure activate_contact_sensors is True
-    steve = HUMANOID_CFG.replace(
+    # Use HUMANOID_28_CFG instead
+    steve = HUMANOID_28_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Steve",
-        spawn=HUMANOID_CFG.spawn.replace(activate_contact_sensors=True),
-        actuators={
-                "body": ImplicitActuatorCfg(
-                    joint_names_expr=[".*"],
-                    damping=10,
-                    stiffness=500,
-                    effort_limit=80,
-                ),
-            },
+        spawn=HUMANOID_28_CFG.spawn.replace(
+            activate_contact_sensors=True,
+            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+                enabled_self_collisions=False,  # Disable to test
+                solver_position_iteration_count=8,
+                solver_velocity_iteration_count=4,
+                sleep_threshold=0.005,
+                stabilization_threshold=0.001,
+            ),
+        ),
+        init_state=ArticulationCfg.InitialStateCfg(pos=(0.0, 0.0, 1.5)),
     )
     
     ground = AssetBaseCfg(prim_path="/World/terrain", spawn=sim_utils.GroundPlaneCfg())
@@ -40,7 +43,6 @@ class Steve_SceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
     )
     
-    # Body contact group - use .* for regex matching
     body_contact = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Steve/.*" + pattern,
         update_period=0.0,
