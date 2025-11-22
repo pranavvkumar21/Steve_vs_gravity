@@ -45,8 +45,8 @@ class ObservationsCfg:
         root_linear_velocity  = ObsTerm(func=mdp.base_lin_vel,  params={"asset_cfg": SceneEntityCfg("steve")})
         root_angular_velocity = ObsTerm(func=mdp.base_ang_vel, params={"asset_cfg": SceneEntityCfg("steve")})
         root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")})
-        joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
-        joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
+        # joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
+        # joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
         # target_feat = ObsTerm(func=mdp.generated_commands, params={"command_name": "joint_init"})  # must match CommandsCfg field name
         # position_error = ObsTerm(func=target_obs)
         # phase = ObsTerm(func=phase_obs, )

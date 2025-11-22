@@ -112,22 +112,65 @@ def get_relative_joint_positions(points3d):
     root_positions = points3d[:, root_joint_id, :]     
     relative_positions = points3d - root_positions[:, np.newaxis, :]
     return relative_positions
+def transform_quaternion_to_zup_and_rotate(quat_yup):
+    """
+    Convert quaternion from Y-up to Z-up and apply additional -90° Z-axis rotation.
+    quat_yup: (w, x, y, z) in Y-up coords.
+    Returns: (w, x, y, z) in IsaacLab Z-up with -90 deg rotation around Z applied.
+    """
+    # Rotation matrix for Y-up to Z-up
+    R_zup = np.array([
+        [1, 0, 0],
+        [0, 0, 1],
+        [0, -1, 0]
+    ], dtype=np.float32)
+    
+    # -90° rotation around Z axis
+    angle = np.deg2rad(-90)
+    c, s = np.cos(angle), np.sin(angle)
+    R_neg90z = np.array([
+        [c, -s, 0],
+        [s,  c, 0],
+        [0,  0, 1]
+    ], dtype=np.float32)
+    
+    # Convert quat to matrix (Y-up)
+    R_mocap = quaternions.quat2mat(quat_yup)
+    
+    # Apply transforms: first Y->Z, then rotate -90deg about Z
+    R_transformed = R_neg90z @ R_zup @ R_mocap @ R_zup.T @ R_neg90z.T
+    
+    quat_transformed = quaternions.mat2quat(R_transformed)
+    return quat_transformed
 
 def get_root_orientation(motion, as_quart=False):
     frames = len(motion)
     orientations = []
     for f in range(frames):
         root_data = motion[f]['root']
-        rotation_deg = root_data[3:]  # rx, ry, rz
+        rotation_deg = root_data[3:]
         rotation_rad = np.deg2rad(rotation_deg)
         R = euler.euler2mat(rotation_rad[0], rotation_rad[1], rotation_rad[2], axes='sxyz')
+
         if as_quart:
-            q = quaternions.mat2quat(R)  # w, x, y, z
-            orientations.append(q)
+            q = quaternions.mat2quat(R)
+            q_zup_rotated = transform_quaternion_to_zup_and_rotate(q)
+            orientations.append(q_zup_rotated)
         else:
-            orientations.append(R)
-    orientations = np.array(orientations)
-    return orientations
+            R_zup = np.array([
+                [1, 0, 0],
+                [0, 0, 1],
+                [0, -1, 0]
+            ], dtype=np.float32)
+            R_neg90z = np.array([
+                [np.cos(np.deg2rad(-90)), -np.sin(np.deg2rad(-90)), 0],
+                [np.sin(np.deg2rad(-90)),  np.cos(np.deg2rad(-90)), 0],
+                [0, 0, 1]
+            ], dtype=np.float32)
+            R_transformed = R_neg90z @ R_zup @ R @ R_zup.T @ R_neg90z.T
+            orientations.append(R_transformed)
+
+    return np.array(orientations)
 
 def get_root_linear_velocity(points3d, fps):
     """
@@ -159,12 +202,13 @@ def joint_name_to_id(joints):
 def get_mapped_joint_angles_as_array(joint_angles: np.ndarray, name_to_id: dict, joint_mapping=JOINT_MAPPING):
     n_joints = len(joint_mapping)
     n_frames = len(joint_angles)
-    angles_array = np.zeros((n_frames, n_joints))
+    angles_array = np.zeros((n_frames, n_joints))  # nframes x njoints
+    
     for f in range(n_frames):
         for target_joint_name, mapping in joint_mapping.items():
             # Handle None mappings (ankle_y)
             if mapping is None:
-                continue
+                continue  # Leave as zero
             
             source_joint_name, dof = mapping
             if source_joint_name in name_to_id:
@@ -176,18 +220,21 @@ def get_mapped_joint_angles_as_array(joint_angles: np.ndarray, name_to_id: dict,
                     angles_array[f, target_joint_id] = joint_angles[f, source_joint_id, 1]
                 elif dof == "rz":
                     angles_array[f, target_joint_id] = joint_angles[f, source_joint_id, 2]
+    
     return angles_array
 
 
 def get_mapped_limits_as_array(joints, joint_mapping=JOINT_MAPPING):
     n_joints = len(joint_mapping)
-    limits_array = np.zeros((n_joints, 2))
+    limits_array = np.zeros((n_joints, 2))  # njoints x 2 (min, max)
+    
     for target_joint_name, mapping in joint_mapping.items():
-        # Handle None mappings (ankle_y)
+        # Handle None mappings (ankle_y joints that don't exist in mocap)
         if mapping is None:
-            limits_array[list(joint_mapping.keys()).index(target_joint_name)] = [0.0, 0.0]
+            target_joint_id = list(joint_mapping.keys()).index(target_joint_name)
+            limits_array[target_joint_id] = [0.0, 0.0]  # Set to zero limits
             continue
-            
+        
         source_joint_name, dof = mapping
         if source_joint_name in joints:
             joint = joints[source_joint_name]
@@ -198,8 +245,11 @@ def get_mapped_limits_as_array(joints, joint_mapping=JOINT_MAPPING):
                 limits_array[target_joint_id] = joint.limits[1]
             elif dof == "rz":
                 limits_array[target_joint_id] = joint.limits[2]
+    
+    # Convert degrees to radians
     limits_array = np.deg2rad(limits_array)
     return limits_array
+
 
 
 def get_joint_velocities(mapped_joint_angles: np.ndarray, fps: int):
@@ -212,22 +262,7 @@ def get_joint_velocities(mapped_joint_angles: np.ndarray, fps: int):
     velocities[0] = np.zeros(n_joints)  # zero velocity for first frame
     return velocities
 
-def get_mapped_limits_as_array(joints, joint_mapping=JOINT_MAPPING):
-    n_joints = len(joint_mapping)
-    limits_array = np.zeros((n_joints, 2))  # njoints x 2 (min, max)
-    for target_joint_name, (source_joint_name, dof) in joint_mapping.items():
-        if source_joint_name in joints:
-            joint = joints[source_joint_name]
-            target_joint_id = list(joint_mapping.keys()).index(target_joint_name)
-            if dof == "rx":
-                limits_array[target_joint_id] = joint.limits[0]
-            elif dof == "ry":
-                limits_array[target_joint_id] = joint.limits[1]
-            elif dof == "rz":
-                limits_array[target_joint_id] = joint.limits[2]
-    # Convert degrees to radians
-    limits_array = np.deg2rad(limits_array)
-    return limits_array
+
             
 def invert_joint_angles(mapped_joint_angles, mapped_limits, inverted_joint_names):
 

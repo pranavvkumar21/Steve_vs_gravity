@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
 if __name__ == "__main__":
     from isaaclab.app import AppLauncher
-    simulation_app = AppLauncher(headless=True,livestream=2).app
+    simulation_app = AppLauncher(headless=True, livestream=2).app
     import omni.replicator.core as rep
+
 import torch
 import time
 from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedRLEnvCfg
@@ -19,52 +20,50 @@ import numpy as np
 import imageio.v2 as imageio
 from pathlib import Path
 import math
+
 ROOT = Path(__file__).resolve().parent.parent
 
-joint_mapping = {
-    # Torso
-    'lower_waist:0': ('lowerback', 0),
-    'lower_waist:1': ('lowerback', 1),
-    'pelvis': ('root', 0),
-
-    # Right arm
-    'right_upper_arm:0': ('rhumerus', 0),
-    'right_upper_arm:2': ('rhumerus', 2),
-    'right_lower_arm': ('rradius', 0),
-
-    # Left arm
-    'left_upper_arm:0': ('lhumerus', 0),
-    'left_upper_arm:2': ('lhumerus', 2),
-    'left_lower_arm': ('lradius', 0),
-
-    # Right leg (hip)
-    'right_thigh:0': ('rfemur', 0),
-    'right_thigh:1': ('rfemur', 1),
-    'right_thigh:2': ('rfemur', 2),
-
-    # Left leg (hip)
-    'left_thigh:0': ('lfemur', 0),
-    'left_thigh:1': ('lfemur', 1),
-    'left_thigh:2': ('lfemur', 2),
-
-    # Knee joints
-    'right_shin': ('rtibia', 0),
-    'left_shin': ('ltibia', 0),
-
-    # Ankle joints
-    'right_foot:0': ('rfoot', 0),
-    'right_foot:1': ('rfoot', 2),
-    'left_foot:0': ('lfoot', 0),
-    'left_foot:1': ('lfoot', 2),
+# Updated joint mapping for HUMANOID_28_CFG
+JOINT_MAPPING = {
+    'abdomen_x': ('lowerback', 'rx'),
+    'abdomen_y': ('lowerback', 'ry'),
+    'abdomen_z': ('lowerback', 'rz'),
+    'neck_x': ('lowerneck', 'rx'),
+    'neck_y': ('lowerneck', 'ry'),
+    'neck_z': ('lowerneck', 'rz'),
+    'right_shoulder_x': ('rhumerus', 'rx'),
+    'right_shoulder_y': ('rhumerus', 'ry'),
+    'right_shoulder_z': ('rhumerus', 'rz'),
+    'left_shoulder_x': ('lhumerus', 'rx'),
+    'left_shoulder_y': ('lhumerus', 'ry'),
+    'left_shoulder_z': ('lhumerus', 'rz'),
+    'right_elbow': ('rradius', 'rx'),
+    'left_elbow': ('lradius', 'rx'),
+    'right_hip_x': ('rfemur', 'rx'),
+    'right_hip_y': ('rfemur', 'ry'),
+    'right_hip_z': ('rfemur', 'rz'),
+    'left_hip_x': ('lfemur', 'rx'),
+    'left_hip_y': ('lfemur', 'ry'),
+    'left_hip_z': ('lfemur', 'rz'),
+    'right_knee': ('rtibia', 'rx'),
+    'left_knee': ('ltibia', 'rx'),
+    'right_ankle_x': ('rfoot', 'rx'),
+    'right_ankle_y': None,  # Not in mocap data
+    'right_ankle_z': ('rfoot', 'rz'),
+    'left_ankle_x': ('lfoot', 'rx'),
+    'left_ankle_y': None,  # Not in mocap data
+    'left_ankle_z': ('lfoot', 'rz'),
 }
+
 
 def map_range_torch(x, in_min, in_max, out_min, out_max):
     x_clipped = torch.clamp(x, in_min, in_max)
     return out_min + (x_clipped - in_min) * (out_max - out_min) / (in_max - in_min)
 
+
 @configclass
 class Steve_EnvCfg(ManagerBasedRLEnvCfg):
-    scene = Steve_SceneCfg(num_envs=4,env_spacing=5.0)
+    scene = Steve_SceneCfg(num_envs=4, env_spacing=5.0)
     observations = ObservationsCfg()
     rewards = RewardsCfg()
     terminations = TerminationsCfg()
@@ -73,7 +72,7 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
     commands = CommandsCfg()
 
     def __post_init__(self):
-        #30 hz
+        # 30 hz
         self.decimation = 5
         self.sim.dt = 1.0 / (30 * self.decimation)
         self.sim.render_interval = self.decimation
@@ -83,8 +82,9 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.resolution = (1280, 720)
         self.viewer.eye = (8, 8, 8)
         self.viewer.lookat = (0.0, 0.0, 0.5)
-def main():
 
+
+def main():
     try:
         import omni.kit.viewport.utility as vp_util
         vp = vp_util.get_active_viewport()
@@ -94,11 +94,11 @@ def main():
         vp_win = vp_legacy.get_viewport_interface().get_viewport_window()
         rp_path = vp_win.get_render_product_path()
 
-    # 3 attach rgb annotator
+    # Attach rgb annotator
     rgb = rep.AnnotatorRegistry.get_annotator("rgb")
     rgb.attach([rp_path])
 
-    # 4 write frames during eval loop
+    # Video writer
     writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
 
     try:
@@ -106,64 +106,133 @@ def main():
         env = ManagerBasedRLEnv(cfg)
         obs = env.reset()
 
-        # After env.reset()
-        # After env.reset()
-        import math
 
+        print("Environment reset successful!")
         joint_names = env.scene["steve"].data.joint_names
-        print(joint_names)
+        print(f"Joint names: {joint_names}")
         
-        limits = env.scene["steve"].data.default_joint_pos_limits[0]
-        root_state  = env.scene["steve"].data.default_root_state
-        shoulder_joints = [
-            'right_shoulder_x', 'right_shoulder_y', 'right_shoulder_z',
-            'left_shoulder_x', 'left_shoulder_y', 'left_shoulder_z'
+        # Load mocap data
+        mocap_limits = torch.from_numpy(
+            np.load("../data/mocap_data/01/01/01_01_mapped_limits.npy")
+        ).float()  # (n_mocap_joints, 2)
+        mocap_angles = torch.from_numpy(
+            np.load("../data/mocap_data/01/01/01_01_mapped_joint_angles.npy")
+        ).float()  # (n_frames, n_mocap_joints)
+        mocap_orientations = torch.from_numpy(
+            np.load("../data/mocap_data/01/01/01_01_root_orientations.npy")
+        ).float()  # (n_frames, 4)
+        
+        # Move to device
+        mocap_limits = mocap_limits.to("cuda")
+        mocap_angles = mocap_angles.to("cuda")
+        mocap_orientations = mocap_orientations.to("cuda")
+        
+        # Get simulation limits and root state
+        limits = env.scene["steve"].data.default_joint_pos_limits[0]  # (n_joints, 2)
+        root_state = env.scene["steve"].data.default_root_state  # (n_env, 13)
+        
+        # Create reorder map from mocap joints to sim joints
+        mocap_joint_order = list(JOINT_MAPPING.keys())
+        n_frames = mocap_angles.shape[0]
+        n_sim_joints = len(joint_names)
+        
+        # Create mapping indices
+        reorder_map = []
+        for name in joint_names:
+            if name in mocap_joint_order:
+                reorder_map.append(mocap_joint_order.index(name))
+            else:
+                reorder_map.append(None)
+        
+        print(f"\nReorder map: {reorder_map}")
+        print(f"Sim joints: {n_sim_joints}, Mocap joints: {len(mocap_joint_order)}")
+        
+        # Reorder mocap angles to match sim joint order
+        ordered_mocap_angles = torch.zeros((n_frames, n_sim_joints), device="cuda")
+        
+        # Joints to set to zero (abdomen/neck - you may want to enable these)
+        joints_to_set_zero = ['abdomen_x', 'abdomen_y', 'abdomen_z', 'neck_x', 'neck_y', 'neck_z']
+        joints_to_set_zero_indices = [
+            joint_names.index(joint) for joint in joints_to_set_zero if joint in joint_names
         ]
-        shoulder_indices = [joint_names.index(name) for name in shoulder_joints]
-
-        print("\n" + "="*80)
-        print("SHOULDER JOINT LIMITS")
-        print("="*80)
-        for i, name in enumerate(shoulder_joints):
-            idx = shoulder_indices[i]
-            print(f"{name:<20} limits=[{limits[idx, 0]:7.4f}, {limits[idx, 1]:7.4f}]")
-
-        for step in range(400):
-            joint_angles = torch.zeros((env.num_envs, len(shoulder_joints)), device=limits.device)
+        
+        for idx in joints_to_set_zero_indices:
+            print(f"Setting joint {joint_names[idx]} to zero")
+            ordered_mocap_angles[:, idx] = 0.0
+        
+        # Map mocap data to sim joints
+        for i, mocap_idx in enumerate(reorder_map):
+            if mocap_idx is not None and joint_names[i] not in joints_to_set_zero:
+                ordered_mocap_angles[:, i] = mocap_angles[:, mocap_idx]
+            elif joint_names[i] not in joints_to_set_zero:
+                ordered_mocap_angles[:, i] = 0.0
+        
+        print("\nJoint Limits Comparison:")
+        print(f"{'Joint Name':<25} {'Sim Min':>10} {'Sim Max':>10} {'Mocap Min':>12} {'Mocap Max':>12}")
+        print("-" * 79)
+        
+        for i, joint_name in enumerate(joint_names):
+            sim_min = limits[i, 0].item()
+            sim_max = limits[i, 1].item()
             
-            for i, idx in enumerate(shoulder_indices):
-                min_limit = limits[idx, 0].item()
-                max_limit = limits[idx, 1].item()
-                amplitude = (max_limit - min_limit) / 2.0
-                center = (max_limit + min_limit) / 2.0
-                
-                freq = 0.1  # Different frequency for each joint
-                target = center + amplitude * math.sin(2 * 3.14159 * freq * step * cfg.sim.dt)
-                
-                # IMPORTANT: Clamp to limits!
-                target = max(min_limit, min(max_limit, target))
-                joint_angles[:, i] = target
+            if joint_name in mocap_joint_order:
+                mocap_joint_idx = mocap_joint_order.index(joint_name)
+                mocap_min = mocap_limits[mocap_joint_idx, 0].item()
+                mocap_max = mocap_limits[mocap_joint_idx, 1].item()
+                print(f"{joint_name:<25} {sim_min:>10.2f} {sim_max:>10.2f} {mocap_min:>12.2f} {mocap_max:>12.2f}")
+            else:
+                print(f"{joint_name:<25} {sim_min:>10.2f} {sim_max:>10.2f} {'N/A':>12} {'N/A':>12}")
+        
+        print(f"\nStarting playback of {n_frames} frames...")
+        
+        # Playback loop
+        for step in range(10000):  # Run for many steps
+            # Get frame index (every 4th mocap frame for 30Hz)
+            frame_idx = (step * 4) % n_frames
             
-            env.scene["steve"].set_joint_position_target(joint_angles, joint_ids=shoulder_indices)
-            env.scene["steve"].write_root_state_to_sim(root_state)
-            obs, _, _, _, _ = env.step(torch.zeros_like(env.action_manager.action))
+            # Get mocap frame and clamp to sim limits
+            frame = ordered_mocap_angles[frame_idx, :]
+            frame_clamped = torch.clamp(frame, limits[:, 0], limits[:, 1])
             
+            # Repeat for all environments
+            frame_batch = frame_clamped.unsqueeze(0).repeat(env.num_envs, 1)
+            
+            # Set joint positions
+            stiffness = 200.0
+            damping = 20.0
+            current_positions = env.scene["steve"].data.joint_pos
+            position_errors = frame_batch - current_positions
+            torque_commands = stiffness * position_errors - damping * env.scene["steve"].data.joint_vel
+            env.scene["steve"].set_joint_effort(torque_commands)
+            env.scene["steve"].set_joint_position_target(frame_batch)
+            
+            # Set root orientation from mocap
+            root_state_copy = root_state.clone()
+            root_state_copy[:, 3:7] = mocap_orientations[frame_idx, :].unsqueeze(0)
+            env.scene["steve"].write_root_state_to_sim(root_state_copy)
+            
+            # Step simulation
+            obs, rewards, dones, trunc, info = env.step(torch.zeros_like(env.action_manager.action))
+            
+            # Capture frame
+            frame_img = rgb.get_data()
+            writer.append_data(frame_img)
+            
+            # Print progress
             if step % 30 == 0:
-                actual_pos = env.scene["steve"].data.joint_pos[0, shoulder_indices]
-                print(f"\nStep {step:3d}:")
-                for i, name in enumerate(shoulder_joints):
-                    target = joint_angles[0, i].item()
-                    actual = actual_pos[i].item()
-                    error = abs(target - actual)
-                    status = "✓" if error < 0.1 else "✗"
-                    print(f"  {status} {name:<20} Target={target:7.4f}, Actual={actual:7.4f}, Error={error:.4f}")
+                actual_pos = env.scene["steve"].data.joint_pos[0]
+                max_error = torch.max(torch.abs(frame_clamped - actual_pos)).item()
+                print(f"Step {step:4d}, Frame {frame_idx:4d}/{n_frames}, Max error: {max_error:.4f}")
 
     except Exception as e:
+        import traceback
         print("An exception occurred:", e)
+        traceback.print_exc()
     finally:
         writer.close()
         env.close()
         simulation_app.close()
+
 
 if __name__ == "__main__":
     main()

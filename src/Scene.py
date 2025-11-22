@@ -25,16 +25,8 @@ class Steve_SceneCfg(InteractiveSceneCfg):
     steve = HUMANOID_28_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Steve",
         spawn=HUMANOID_28_CFG.spawn.replace(
-            activate_contact_sensors=True,
-            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-                enabled_self_collisions=False,  # Disable to test
-                solver_position_iteration_count=8,
-                solver_velocity_iteration_count=4,
-                sleep_threshold=0.005,
-                stabilization_threshold=0.001,
-            ),
+            activate_contact_sensors=True
         ),
-        init_state=ArticulationCfg.InitialStateCfg(pos=(0.0, 0.0, 1.5)),
     )
     
     ground = AssetBaseCfg(prim_path="/World/terrain", spawn=sim_utils.GroundPlaneCfg())
