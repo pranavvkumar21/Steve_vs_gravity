@@ -20,40 +20,10 @@ import numpy as np
 import imageio.v2 as imageio
 from pathlib import Path
 import math
-
+import sys
 ROOT = Path(__file__).resolve().parent.parent
-
-# Updated joint mapping for HUMANOID_28_CFG
-JOINT_MAPPING = {
-    'abdomen_x': ('lowerback', 'rx'),
-    'abdomen_y': ('lowerback', 'ry'),
-    'abdomen_z': ('lowerback', 'rz'),
-    'neck_x': ('lowerneck', 'rx'),
-    'neck_y': ('lowerneck', 'ry'),
-    'neck_z': ('lowerneck', 'rz'),
-    'right_shoulder_x': ('rhumerus', 'rx'),
-    'right_shoulder_y': ('rhumerus', 'ry'),
-    'right_shoulder_z': ('rhumerus', 'rz'),
-    'left_shoulder_x': ('lhumerus', 'rx'),
-    'left_shoulder_y': ('lhumerus', 'ry'),
-    'left_shoulder_z': ('lhumerus', 'rz'),
-    'right_elbow': ('rradius', 'rx'),
-    'left_elbow': ('lradius', 'rx'),
-    'right_hip_x': ('rfemur', 'rx'),
-    'right_hip_y': ('rfemur', 'ry'),
-    'right_hip_z': ('rfemur', 'rz'),
-    'left_hip_x': ('lfemur', 'rx'),
-    'left_hip_y': ('lfemur', 'ry'),
-    'left_hip_z': ('lfemur', 'rz'),
-    'right_knee': ('rtibia', 'rx'),
-    'left_knee': ('ltibia', 'rx'),
-    'right_ankle_x': ('rfoot', 'rx'),
-    'right_ankle_y': None,  # Not in mocap data
-    'right_ankle_z': ('rfoot', 'rz'),
-    'left_ankle_x': ('lfoot', 'rx'),
-    'left_ankle_y': None,  # Not in mocap data
-    'left_ankle_z': ('lfoot', 'rz'),
-}
+sys.path.append(str(ROOT / "scripts"))
+from joint_mappings import JOINT_MAPPING
 
 
 def map_range_torch(x, in_min, in_max, out_min, out_max):
@@ -63,7 +33,7 @@ def map_range_torch(x, in_min, in_max, out_min, out_max):
 
 @configclass
 class Steve_EnvCfg(ManagerBasedRLEnvCfg):
-    scene = Steve_SceneCfg(num_envs=4, env_spacing=5.0)
+    scene = Steve_SceneCfg(num_envs=1, env_spacing=5.0)
     observations = ObservationsCfg()
     rewards = RewardsCfg()
     terminations = TerminationsCfg()
@@ -73,7 +43,7 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         # 30 hz
-        self.decimation = 5
+        self.decimation = 4
         self.sim.dt = 1.0 / (30 * self.decimation)
         self.sim.render_interval = self.decimation
         self.max_episode_length = 1000
@@ -113,13 +83,13 @@ def main():
         
         # Load mocap data
         mocap_limits = torch.from_numpy(
-            np.load("../data/mocap_data/01/01/01_01_mapped_limits.npy")
+            np.load("../data/mocap_data/07/01/07_01_mapped_limits.npy")
         ).float()  # (n_mocap_joints, 2)
         mocap_angles = torch.from_numpy(
-            np.load("../data/mocap_data/01/01/01_01_mapped_joint_angles.npy")
+            np.load("../data/mocap_data/07/01/07_01_mapped_joint_angles.npy")
         ).float()  # (n_frames, n_mocap_joints)
         mocap_orientations = torch.from_numpy(
-            np.load("../data/mocap_data/01/01/01_01_root_orientations.npy")
+            np.load("../data/mocap_data/07/01/07_01_root_orientations.npy")
         ).float()  # (n_frames, 4)
         
         # Move to device
@@ -184,11 +154,19 @@ def main():
                 print(f"{joint_name:<25} {sim_min:>10.2f} {sim_max:>10.2f} {'N/A':>12} {'N/A':>12}")
         
         print(f"\nStarting playback of {n_frames} frames...")
-        
+        default_joint_stiffness = env.scene["steve"].data.default_joint_stiffness[0]
+        default_joint_damping = env.scene["steve"].data.default_joint_damping[0]
+
+        print(f"\n joint names and body names")
+        print(joint_names)
+        print(env.scene["steve"].data.body_names)
+        for i, joint_name in enumerate(joint_names):
+            #print joint name, stiffness, damping as a table
+            print(f"{joint_name:<25} {default_joint_stiffness[i]:>10.2f} {default_joint_damping[i]:>10.2f}")
         # Playback loop
-        for step in range(10000):  # Run for many steps
+        for step in range(1000):  # Run for many steps
             # Get frame index (every 4th mocap frame for 30Hz)
-            frame_idx = (step * 4) % n_frames
+            frame_idx = (step) % n_frames
             
             # Get mocap frame and clamp to sim limits
             frame = ordered_mocap_angles[frame_idx, :]
@@ -203,7 +181,7 @@ def main():
             current_positions = env.scene["steve"].data.joint_pos
             position_errors = frame_batch - current_positions
             torque_commands = stiffness * position_errors - damping * env.scene["steve"].data.joint_vel
-            env.scene["steve"].set_joint_effort(torque_commands)
+            # env.scene["steve"].set_joint_effort(torque_commands)
             env.scene["steve"].set_joint_position_target(frame_batch)
             
             # Set root orientation from mocap

@@ -4,3 +4,4 @@ scripts/AMCParser
 scripts/__pycache__/
 videos/
 .env
+src/Managers/__pycache__/

@@ -115,8 +115,11 @@ def get_relative_joint_positions(points3d):
 def transform_quaternion_to_zup_and_rotate(quat_yup):
     """
     Convert quaternion from Y-up to Z-up and apply additional -90° Z-axis rotation.
+    Then invert the pitch angle to fix forward/backward lean direction.
+
     quat_yup: (w, x, y, z) in Y-up coords.
-    Returns: (w, x, y, z) in IsaacLab Z-up with -90 deg rotation around Z applied.
+    Returns: (w, x, y, z) in IsaacLab Z-up with -90 deg rotation around Z applied,
+             and pitch inverted.
     """
     # Rotation matrix for Y-up to Z-up
     R_zup = np.array([
@@ -124,7 +127,7 @@ def transform_quaternion_to_zup_and_rotate(quat_yup):
         [0, 0, 1],
         [0, -1, 0]
     ], dtype=np.float32)
-    
+
     # -90° rotation around Z axis
     angle = np.deg2rad(-90)
     c, s = np.cos(angle), np.sin(angle)
@@ -133,15 +136,26 @@ def transform_quaternion_to_zup_and_rotate(quat_yup):
         [s,  c, 0],
         [0,  0, 1]
     ], dtype=np.float32)
-    
+
     # Convert quat to matrix (Y-up)
     R_mocap = quaternions.quat2mat(quat_yup)
-    
+
     # Apply transforms: first Y->Z, then rotate -90deg about Z
     R_transformed = R_neg90z @ R_zup @ R_mocap @ R_zup.T @ R_neg90z.T
-    
-    quat_transformed = quaternions.mat2quat(R_transformed)
-    return quat_transformed
+
+    # Convert transformed rotation matrix to Euler angles (sxyz)
+    roll, pitch, yaw = euler.mat2euler(R_transformed, axes='sxyz')
+
+    # Invert pitch to fix forward/backward lean
+    pitch = -pitch
+
+    # Rebuild the corrected rotation matrix with inverted pitch
+    R_corrected = euler.euler2mat(roll, pitch, yaw, axes='sxyz')
+
+    # Convert back to quaternion
+    quat_corrected = quaternions.mat2quat(R_corrected)
+
+    return quat_corrected
 
 def get_root_orientation(motion, as_quart=False):
     frames = len(motion)
@@ -275,13 +289,71 @@ def invert_joint_angles(mapped_joint_angles, mapped_limits, inverted_joint_names
         inverted_limits[joint_idx] = [-mapped_limits[joint_idx, 1], -mapped_limits[joint_idx, 0]]
     
     return inverted_angles, inverted_limits
+import numpy as np
+from transforms3d import euler
+
+def debug_root_orientation(motion):
+    """
+    Debug function to print root rotation Euler angles before and after coordinate transform.
+    
+    Parameters:
+    - motion: mocap motion data as list of frames (dicts).
+    """
+    print("Frame | Raw Euler (deg) | Transformed Euler (deg)")
+    print("---------------------------------------------------")
+    for f, frame in enumerate(motion):
+        root_data = frame['root']
+        rotation_deg = root_data[3:]  # Assuming RX RY RZ in degrees
+        rotation_rad = np.deg2rad(rotation_deg)
+        
+        # Raw Euler angles
+        raw_roll, raw_pitch, raw_yaw = rotation_deg
+        
+        # Rotation matrix from raw euler
+        R = euler.euler2mat(rotation_rad[0], rotation_rad[1], rotation_rad[2], axes='sxyz')
+        
+        # Coordinate transform (same as in your code)
+        R_zup = np.array([
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, -1, 0]
+        ], dtype=np.float32)
+        angle = np.deg2rad(-90)
+        c, s = np.cos(angle), np.sin(angle)
+        R_neg90z = np.array([
+            [c, -s, 0],
+            [s,  c, 0],
+            [0,  0, 1]
+        ], dtype=np.float32)
+        
+        R_transformed = R_neg90z @ R_zup @ R @ R_zup.T @ R_neg90z.T
+        
+        # Get transformed euler angles from rotation matrix in degrees
+        trans_roll, trans_pitch, trans_yaw = np.rad2deg(euler.mat2euler(R_transformed, axes='sxyz'))
+        
+        print(f"{f:4d} | "
+              f"R: {raw_roll:7.2f} P: {raw_pitch:7.2f} Y: {raw_yaw:7.2f} | "
+              f"R: {trans_roll:7.2f} P: {trans_pitch:7.2f} Y: {trans_yaw:7.2f}")
+        
+        # Debug only first 10 frames
+        if f >= 9:
+            break
 
 def main():
-    subject = "01"
+    subject = "07"
     sequence = "01"
     download_dir = "../data/mocap_data"
     asf_path, amc_path = download_motion(subject, sequence, download_dir)
     skeleton, motion_data = load_motion(subject, sequence, download_dir)
+    #clip motion data
+    start_frame = 86
+    end_frame = 220
+    skip_frames = 4  # For 30Hz playback from 120Hz mocap
+    motion_data = motion_data[start_frame:end_frame:skip_frames]
+    n_frames = len(motion_data)
+    print("motion data clipped to frames:", start_frame, "to", end_frame, "with skip of", skip_frames)
+    print(f"Total frames after clipping: {n_frames}")
+    print(f"duration (s): {n_frames / 30.0:.2f}")
     print(f"Loaded motion data for subject {subject}, sequence {sequence}")
     print(f"Number of frames: {len(motion_data[0])}")
     limits_array = asf_limits_as_array(list(skeleton.values()), motion_data)
@@ -299,7 +371,7 @@ def main():
     root_orientations = get_root_orientation(motion_data, as_quart=True)
     print(f"Root orientation (quaternion) at frame 0: {root_orientations[0]}")
     # print(f"Joints in skeleton: {list(skeleton.joints.keys())}")
-    fps = 120  # CMU Mocap default fps
+    fps = 30  # CMU Mocap default fps but we are skipping frames
     root_velocities = get_root_linear_velocity(points3d, fps)
     print(f"Root linear velocity at frame 1: {root_velocities[1]}")
     name_to_id = joint_name_to_id(skeleton)
@@ -317,7 +389,9 @@ def main():
     print(f"Mapped limits shape: {mapped_limits_array.shape}")
     print(f"Mapped limits for first joint: {mapped_limits_array[0]}")
     # Example: Invert joint angles for left and right shin and lower arm
-    inverted_joint_names = ['left_knee', 'right_knee', 'left_elbow', 'right_elbow']
+    inverted_joint_names = ["left_shoulder_yaw", "right_shoulder_yaw",
+                            "left_shoulder_roll", "right_shoulder_roll",
+                            ]
     # inverted_joint_names = JOINT_MAPPING.keys()  # Invert all joints
     mapped_joint_angles, mapped_limits_array = invert_joint_angles(mapped_joint_angles, mapped_limits_array, inverted_joint_names)
     print(f"Inverted joint angles for joints: {inverted_joint_names}")
@@ -343,6 +417,14 @@ def main():
     print(f"Mapped joint angles array shape: {mapped_joint_angles.shape}")
     print(f"Joint velocities array shape: {joint_velocities.shape}")
     print(f"Mapped limits array shape: {mapped_limits_array.shape}")
+    # Debug root orientation
+    debug_root_orientation(motion_data)
+    #save joint_position, joint velocity, root_orientation, root_velocity to npz
+    np.savez(os.path.join(download_dir, subject, sequence, f"{subject}_{sequence}_full_data.npz"),
+             joint_positions=mapped_joint_angles,
+             joint_velocities=joint_velocities,
+             root_orientations=root_orientations,
+             root_velocities=root_velocities)
 
 
 if __name__ == "__main__":

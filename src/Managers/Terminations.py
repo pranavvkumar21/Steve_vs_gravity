@@ -18,4 +18,4 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
     # (2) Body touch
-    body_touch = DoneTerm(func=body_touch, time_out=True)
+    # body_touch = DoneTerm(func=body_touch, time_out=True)
