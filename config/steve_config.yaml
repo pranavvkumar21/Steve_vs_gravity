@@ -40,8 +40,6 @@ scene:
     - right_knee_link
     - left_shoulder_yaw_link
     - right_shoulder_yaw_link
-    - left_ankle_link
-    - right_ankle_link
     - left_elbow_link
     - right_elbow_link
 
@@ -53,21 +51,21 @@ env_config:
   seed: 42
 train:
   num_envs: 4096
-  num_iterations: 400
+  num_iterations: 600
   rows: 10
   cols: 10
   total_timesteps: 98e6
-  n_steps: 128
+  n_steps: 64
   batch_size: 65_536
   learning_rate:
     start: 3.5e-4
-    end: 3.0e-4
+    end: 3.5e-4
     end_fraction: 1.0
   clip_range: 0.2
   gamma: 0.992
   ent_coef: 0.0025
   n_epochs: 10
-  target_kl: 0.015
+  target_kl: 0.07
 eval:
   num_envs: 1
   rows: 1

@@ -155,7 +155,7 @@ def main():
             target_kl=config["train"]["target_kl"],
             use_sde=False,
             normalize_advantage=True,
-            policy_kwargs=dict(net_arch=[256, 256], log_std_init=0.0, full_std=True),  # Adjust the policy architecture if needed
+            policy_kwargs=dict(net_arch=[1024, 512, 256], log_std_init=0.0, full_std=True),  # Adjust the policy architecture if needed
             tensorboard_log=str(ROOT / "logs/ppo_pybullet_tensorboard/"),
         )
     else:

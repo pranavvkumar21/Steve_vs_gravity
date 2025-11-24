@@ -10,6 +10,9 @@ def body_touch(env):
     #     print("Body contact time_out:")
     return in_contact
 
+# need to add a termination condition if the clip reaches the end of the motion
+# will do that later
+
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
@@ -18,4 +21,4 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
     # (2) Body touch
-    # body_touch = DoneTerm(func=body_touch, time_out=True)
+    body_touch = DoneTerm(func=body_touch, time_out=True)

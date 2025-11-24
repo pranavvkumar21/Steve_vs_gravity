@@ -18,19 +18,14 @@ joint_names = config["scene"]["joint_names"]
 
 
 
-def phase_obs(env, key="phase", use_trig=True):
+def phase_obs(env, key="phase", use_trig=False):
     if not hasattr(env, "cmd") or key not in env.cmd:
         print("Warning: phase not initialized yet!")
         env.cmd = {}
-        return torch.zeros((env.scene.num_envs, 8), device=env.device)
+        return torch.zeros((env.scene.num_envs, 1), device=env.device)
     ph = env.cmd[key]
     return torch.cat([torch.sin(ph), torch.cos(ph)], dim=-1) if use_trig else ph
-def freq_obs(env, key="frequency"):
-    if not hasattr(env, "cmd") or key not in env.cmd:
-        print("Warning: frequency not initialized yet!")
-        env.cmd = {}
-        return torch.zeros((env.scene.num_envs, 4), device=env.device)
-    return env.cmd[key]
+
 def target_obs(env):
     joint_ids = [env.scene["steve"].data.joint_names.index(name) for name in joint_names]
     joints = env.scene["steve"].data.joint_pos[:,joint_ids]
@@ -45,12 +40,11 @@ class ObservationsCfg:
         root_linear_velocity  = ObsTerm(func=mdp.base_lin_vel,  params={"asset_cfg": SceneEntityCfg("steve")})
         root_angular_velocity = ObsTerm(func=mdp.base_ang_vel, params={"asset_cfg": SceneEntityCfg("steve")})
         root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")})
-        # joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
-        # joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
-        # target_feat = ObsTerm(func=mdp.generated_commands, params={"command_name": "joint_init"})  # must match CommandsCfg field name
-        # position_error = ObsTerm(func=target_obs)
-        # phase = ObsTerm(func=phase_obs, )
-        # frequency = ObsTerm(func=freq_obs)
+        joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
+        joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
+        target_joint_pos = ObsTerm(func=target_obs)
+        phase = ObsTerm(func=phase_obs, )
+
 
         def __post_init__(self):
             self.enable_corruption = False

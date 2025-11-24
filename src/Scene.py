@@ -31,14 +31,14 @@ class Steve_SceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75)),
     )
     
-    # body_contact = ContactSensorCfg(
-    #     prim_path="{ENV_REGEX_NS}/Steve/.*" + pattern,
-    #     update_period=0.0,
-    #     history_length=1,
-    #     filter_prim_paths_expr=["/World/terrain"],
-    #     force_threshold=1.0,      
-    #     debug_vis=False,
-    # )
+    body_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Steve/.*" + pattern,
+        update_period=0.0,
+        history_length=1,
+        filter_prim_paths_expr=["/World/terrain"],
+        force_threshold=1.0,      
+        debug_vis=False,
+    )
 
     # l_foot_contact = ContactSensorCfg(
     #     prim_path="{ENV_REGEX_NS}/Steve/left_foot",
