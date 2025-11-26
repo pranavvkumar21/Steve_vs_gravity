@@ -1,6 +1,7 @@
 import torch 
 import numpy as np
 import random
+import pickle
 
 class MotionManager:
     def __init__(self, device='cuda:0'):
@@ -9,15 +10,25 @@ class MotionManager:
 
     def load_motion(self, motion_name, file_path, is_cyclic=True):
         # load npz file
-        data = np.load(file_path)
+        with open(file_path, 'rb') as f:
+            data = pickle.load(f)
         self.motions[motion_name] = {
-            'joint_positions': torch.tensor(data['joint_positions'], device=self.device, dtype=torch.float32),
-            'joint_velocities': torch.tensor(data['joint_velocities'], device=self.device, dtype=torch.float32),
-            'root_orientations': torch.tensor(data['root_orientations'], device=self.device, dtype=torch.float32),
+            'joint_positions': torch.tensor(data['dof_pos'], device=self.device, dtype=torch.float32),
+            # 'joint_velocities': torch.tensor(data['joint_velocities'], device=self.device, dtype=torch.float32),
+            'root_orientations': torch.tensor(data['root_rot'], device=self.device, dtype=torch.float32),
             
         }
+        #need to change create joint velocities as difference between dof_pos frames/fps
+
+        self.motions[motion_name]['joint_velocities'] = torch.zeros_like(self.motions[motion_name]['joint_positions'])
+        fps =30
+        for i in range(1, self.motions[motion_name]['joint_positions'].shape[0]):
+            self.motions[motion_name]['joint_velocities'][i] = (self.motions[motion_name]['joint_positions'][i] - self.motions[motion_name]['joint_positions'][i-1]) * fps
         self.motions[motion_name]['frame_count'] = self.motions[motion_name]['joint_positions'].shape[0]
         self.motions[motion_name]['is_cyclic'] = is_cyclic
+        #remove "pelvis" from joint names ordered
+        self.motions[motion_name]['joint_names_ordered'] = [name for name in data['joint_names_ordered'] if name != "pelvis"]
+        
         self.create_phase(motion_name)
     def create_phase(self, motion_name):
         #create tensor of shape (T,) with values linearly spaced between 0 and 1 using frame count
@@ -66,7 +77,6 @@ class MotionManager:
             mapped_joint_names (list): list of joint names (keys from JOINT_MAPPING), matches data order
         """
         motion = self.motions[motion_name]
-        
         # Create index mapping from robot_joint_names to mapped_joint_names
         index_map = [mapped_joint_names.index(name) for name in robot_joint_names]
 
@@ -79,7 +89,7 @@ class MotionManager:
 
         min_limits = joint_limits[0,:, 0]  # [num_joints]
         max_limits = joint_limits[0,:, 1]  # [num_joints]
-        print(joint_positions.shape)  # Should be [num_frames, num_joints]
+        # print(joint_positions.shape)  # Should be [num_frames, num_joints]
         # print(min_limits.shape)       # Should be [1, num_joints]
         # print(max_limits.shape) 
         self.motions[motion_name]['joint_positions'] = torch.clamp(
@@ -87,3 +97,23 @@ class MotionManager:
             min_limits,
             max_limits
         )
+    def get_joint_indices(self,motion_name, robot_joint_names):
+        """
+        Returns a list of indices to map mocap_joint_names to robot_joint_names.
+        
+        Arguments:
+            mocap_joint_names (list): list of joint names in mocap order
+            robot_joint_names (list): list of joint names in robot order
+            
+        Returns:
+            list: list of indices such that mocap_joint_names[indices] gives robot_joint_names
+        """
+        mocap_joint_names = self.motions[motion_name]['joint_names_ordered']
+        joint_indices = []
+        for name in mocap_joint_names:
+            if name not in robot_joint_names:
+                continue
+            idx = robot_joint_names.index(name)
+            joint_indices.append(idx)
+        self.motions[motion_name]['joint_indices'] = joint_indices
+        return joint_indices

@@ -24,7 +24,7 @@ def velocity_tracking(env, key="x", slope=-3):
 
 def joint_position_tracking(env):
     joint_names = env.scene["steve"].data.joint_names
-    joint_ids = [env.scene["steve"].data.joint_names.index(name) for name in joint_names]
+    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
     
     current_joint_pos = env.scene["steve"].data.joint_pos[:, joint_ids]
     cmd_joint_pos = env.cmd["joint_position"][:, joint_ids]
@@ -32,13 +32,13 @@ def joint_position_tracking(env):
     
     position_error_sq = torch.sum((current_joint_pos - cmd_joint_pos) ** 2, dim=1)
     
-    reward = torch.exp(-2.0 * position_error_sq)
+    reward = torch.exp(-0.5 * position_error_sq)
     
     return reward
 
 def joint_velocity_tracking(env):
     joint_names = env.scene["steve"].data.joint_names
-    joint_ids = [env.scene["steve"].data.joint_names.index(name) for name in joint_names]
+    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
     
     current_joint_vel = env.scene["steve"].data.joint_vel[:, joint_ids]
     cmd_joint_vel = env.cmd["joint_velocity"][:, joint_ids]
@@ -61,7 +61,7 @@ def root_orientation_tracking(env):
 class RewardsCfg:
     """Reward terms for the MDP."""
     # alive = RewTerm(func=mdp.is_alive, weight=1.0)
-    # forward_vel = RewTerm(func=velocity_tracking, params={"key": "x", "slope": config["forward_velocity"]["slope"]}, weight=config["forward_velocity"]["weight"])
+    forward_vel = RewTerm(func=velocity_tracking, params={"key": "x", "slope": config["forward_velocity"]["slope"]}, weight=config["forward_velocity"]["weight"])
     # lateral_vel = RewTerm(func=velocity_tracking, params={"key": "y", "slope": config["lateral_velocity"]["slope"]}, weight=config["lateral_velocity"]["weight"])
     # angular_vel = RewTerm(func=velocity_tracking, params={"key": "z", "slope": config["angular_velocity"]["slope"]}, weight=config["angular_velocity"]["weight"])
     # balance reward

@@ -81,15 +81,18 @@ class PhaseAction(ActionTerm):
             next_frame_idx_int = next_frame_idx.long()
             self.env.cmd["joint_position"][:] = motion['joint_positions'][next_frame_idx_int]
             self.env.cmd["joint_velocity"][:] = motion['joint_velocities'][next_frame_idx_int]
+            self.env.cmd["root_orientation"][:] = motion['root_orientations'][next_frame_idx_int]
             self.env.cmd["phase"][:, 0] = motion['phase'][next_frame_idx_int]
         self.sim_step = (self.sim_step + 1) % self.env.cfg.decimation
 
 
 @configclass
 class ActionsCfg:
-    joint_pos = mdp.RelativeJointPositionActionCfg(
+    pass
+    joint_pos = mdp.JointPositionToLimitsActionCfg(
         asset_name = "steve",
         joint_names = steve_config["scene"]["joint_names"],
-        scale=20*torch.pi/180,
+        scale=1.0,
+        rescale_to_limits=True
     )
     phase = ActionTermCfg(class_type=PhaseAction, asset_name="steve", clip={".*":(-1.0, 1.0)})

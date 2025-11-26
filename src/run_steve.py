@@ -5,6 +5,7 @@ p = argparse.ArgumentParser()
 # define command line arguments
 p.add_argument("--mode", choices=["train", "eval"], default="eval", help="Mode: train or eval")
 p.add_argument("--load", action="store_true", help="Load model if flag is set")
+p.add_argument("--bc", action="store_true", help="Use behavior cloning if flag is set")
 args = p.parse_args()
 
 print(f"Running in {args.mode} mode. Load flag is set to {args.load}")
@@ -43,14 +44,16 @@ import imageio.v2 as imageio
 
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.callbacks import CallbackList
+from stable_baselines3.common.policies import ActorCriticPolicy
 from callbacks import TensorboardCallback
 from callbacks import create_checkpoint_callback, get_latest_model_path
+import numpy as np
 import yaml
 from pathlib import Path
 import os
-
+from tqdm import tqdm
 from natsort import natsorted
-
+import torch
 ROOT = Path(__file__).resolve().parent.parent
 with open(ROOT / "config" / "steve_config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -111,8 +114,54 @@ def main():
     register_envs()
     cfg = Steve_EnvCfg()
     cfg = config_env(cfg)
+    
 
     env = gym.make("Steve-v0", cfg=cfg, render_mode="rgb_array" if args.mode == "eval" else None)
+    env = Sb3VecEnvWrapper(env, fast_variant=False)
+    obs = env.reset()
+    if not args.load:
+        env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+        print("Fitting vec env running mean/std...")
+        # for _ in tqdm(range(1000), desc="Fitting running mean/std"):  # Collect ~1000 steps to fit running mean/std
+        #     actions = np.array([env.action_space.sample() for _ in range(env.num_envs)])
+        #     obs, _, dones, _, = env.step(actions)
+        # print("Done fitting vec env running mean/std.")
+
+    if args.bc:
+        from bc import generate_expert_trajectories_wrapped as generate_expert_trajectories
+        from imitation.algorithms.bc import BC
+        print(pyfiglet.figlet_format("---Behavior Cloning Mode---", font="slant"))
+        time.sleep(2)
+        print("Generating expert trajectories...")
+        expert_demos = generate_expert_trajectories(env, num_trajectories=400, action_scale=20*torch.pi/180)
+        print(f"Generated {len(expert_demos)} expert trajectories.")
+        traj = expert_demos[0]
+        print(f"Trajectory length: {len(traj.obs)}")
+        print(f"Action shape: {traj.acts[0].shape}")
+        print(f"Action range: [{traj.acts.min():.3f}, {traj.acts.max():.3f}]")
+        print(f"Action mean: {traj.acts.mean():.3f}")
+        from imitation.algorithms.bc import BC
+        rng = np.random.default_rng(42)
+        policy_kwargs = dict(net_arch=[1024, 512, 256], activation_fn=torch.nn.ReLU)
+        lr_schedule = lambda _: 1e-3
+        policy = ActorCriticPolicy(env.observation_space, env.action_space, net_arch=policy_kwargs['net_arch'], lr_schedule=lr_schedule)
+        bc_model = BC(
+            observation_space=env.observation_space,
+            action_space=env.action_space,
+            demonstrations=expert_demos,
+            batch_size=64,
+            rng = rng,
+            policy=policy,
+        )
+        print("Starting behavior cloning training...")
+        bc_model.train(n_epochs=200)
+        #save bc model
+        torch.save(bc_model.policy.state_dict(), str(MODEL_PATH / "bc_policy_state_dict.pt"))
+        print("Saved BC policy to 'models/bc_policy.pt'")
+        
+        # env.close()
+        # simulation_app.close()
+
 
     if args.mode == "eval":
         try:
@@ -132,9 +181,7 @@ def main():
         writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
 
 
-    env = Sb3VecEnvWrapper(env, fast_variant=False)
-    if not args.load:
-        env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+
 
     # save_model_path,_ = get_latest_model_path(model_path, prefix)
     if not args.load :
@@ -158,6 +205,19 @@ def main():
             policy_kwargs=dict(net_arch=[1024, 512, 256], log_std_init=0.0, full_std=True),  # Adjust the policy architecture if needed
             tensorboard_log=str(ROOT / "logs/ppo_pybullet_tensorboard/"),
         )
+        # print("Loading BC policy weights into PPO model...")
+        # if os.path.exists(MODEL_PATH / "bc_policy_state_dict.pt"):
+        #     bc_policy_state_dict = torch.load(str(MODEL_PATH / "bc_policy_state_dict.pt"))
+        #     model.policy.load_state_dict(bc_policy_state_dict, strict=False)
+        #     print("Loaded BC policy weights into PPO model.")
+        #     #set log std to -2 for all action dimensions
+        #     with torch.no_grad():
+        #         if hasattr(model.policy, "log_std"):
+        #             model.policy.log_std[:] = -1.5
+        # else:
+        #     print("BC policy state dict not found, proceeding without loading BC weights.")
+        
+
     else:
         latest_model_path = get_latest_model_path(str(MODEL_PATH), "steve_ppo_model")
         if latest_model_path is None:

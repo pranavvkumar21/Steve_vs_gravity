@@ -4,44 +4,80 @@ scene:
   cols: 1
   env_spacing: 30.0
   joint_names:
-    - 'left_hip_yaw'
-    - 'right_hip_yaw'
-    - 'torso'
-    - 'left_hip_roll'
-    - 'right_hip_roll'
-    - 'left_shoulder_pitch'
-    - 'right_shoulder_pitch'
-    - 'left_hip_pitch'
-    - 'right_hip_pitch'
-    - 'left_shoulder_roll'
-    - 'right_shoulder_roll'
-    - 'left_knee'
-    - 'right_knee'
-    - 'left_shoulder_yaw'
-    - 'right_shoulder_yaw'
-    - 'left_ankle'
-    - 'right_ankle'
-    - 'left_elbow'
-    - 'right_elbow'
+    - left_hip_pitch_joint
+    - left_hip_roll_joint
+    - left_hip_yaw_joint
+    - left_knee_joint
+    - left_ankle_pitch_joint
+    - left_ankle_roll_joint
+    - right_hip_pitch_joint
+    - right_hip_roll_joint
+    - right_hip_yaw_joint
+    - right_knee_joint
+    - right_ankle_pitch_joint
+    - right_ankle_roll_joint
+    - waist_yaw_joint
+    - waist_roll_joint
+    - waist_pitch_joint
+    - left_shoulder_pitch_joint
+    - left_shoulder_roll_joint
+    - left_shoulder_yaw_joint
+    - left_elbow_joint
+    - left_wrist_roll_joint
+    - left_wrist_pitch_joint
+    - left_wrist_yaw_joint
+    - right_shoulder_pitch_joint
+    - right_shoulder_roll_joint
+    - right_shoulder_yaw_joint
+    - right_elbow_joint
+    - right_wrist_roll_joint
+    - right_wrist_pitch_joint
+    - right_wrist_yaw_joint
+
   body_contact_links:
     - pelvis
+    - left_hip_pitch_link
+    - right_hip_pitch_link
+    - waist_yaw_link
+    - left_hip_roll_link
+    - right_hip_roll_link
+    - waist_roll_link
     - left_hip_yaw_link
     - right_hip_yaw_link
     - torso_link
-    - left_hip_roll_link
-    - right_hip_roll_link
-    - left_shoulder_pitch_link
-    - right_shoulder_pitch_link
-    - left_hip_pitch_link
-    - right_hip_pitch_link
-    - left_shoulder_roll_link
-    - right_shoulder_roll_link
     - left_knee_link
     - right_knee_link
+    - left_shoulder_pitch_link
+    - right_shoulder_pitch_link
+    - left_shoulder_roll_link
+    - right_shoulder_roll_link
     - left_shoulder_yaw_link
     - right_shoulder_yaw_link
     - left_elbow_link
     - right_elbow_link
+    - left_wrist_roll_link
+    - right_wrist_roll_link
+    - left_wrist_pitch_link
+    - right_wrist_pitch_link
+    - left_wrist_yaw_link
+    - right_wrist_yaw_link
+    - left_hand_palm_link
+    - right_hand_palm_link
+    - left_hand_index_0_link
+    - left_hand_middle_0_link
+    - left_hand_thumb_0_link
+    - right_hand_index_0_link
+    - right_hand_middle_0_link
+    - right_hand_thumb_0_link
+    - left_hand_index_1_link
+    - left_hand_middle_1_link
+    - left_hand_thumb_1_link
+    - right_hand_index_1_link
+    - right_hand_middle_1_link
+    - right_hand_thumb_1_link
+    - left_hand_thumb_2_link
+    - right_hand_thumb_2_link
+
 
 env_config:
   sim_dt: 0.001
@@ -51,7 +87,7 @@ env_config:
   seed: 42
 train:
   num_envs: 4096
-  num_iterations: 600
+  num_iterations: 1500
   rows: 10
   cols: 10
   total_timesteps: 98e6
@@ -65,7 +101,7 @@ train:
   gamma: 0.992
   ent_coef: 0.0025
   n_epochs: 10
-  target_kl: 0.07
+  target_kl: 0.02
 eval:
   num_envs: 1
   rows: 1
@@ -73,4 +109,4 @@ eval:
 
 save_config:
   save_path: ../../models/isaac_models/
-  save_prefix: ruu_ppo_model
+  save_prefix: steve_ppo_model
