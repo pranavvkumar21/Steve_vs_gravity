@@ -55,6 +55,8 @@ from tqdm import tqdm
 from natsort import natsorted
 import torch
 ROOT = Path(__file__).resolve().parent.parent
+with open(ROOT / "config" / "env_config.yaml", "r") as f:
+    env_config = yaml.safe_load(f)
 with open(ROOT / "config" / "steve_config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
@@ -64,12 +66,12 @@ MODEL_PATH = ROOT / "models"
 
 def config_env(cfg):
     if args.mode == "train":
-        cfg.scene.num_envs = config["train"]["num_envs"]
+        cfg.scene.num_envs = env_config["train"]["num_envs"]
         # cfg.scene.terrain_importer.terrain_generator.rows = config["train"]["rows"]
         # cfg.scene.terrain_importer.terrain_generator.cols = config["train"]["cols"]
 
     else:
-        cfg.scene.num_envs = config["eval"]["num_envs"]
+        cfg.scene.num_envs = env_config["eval"]["num_envs"]
         # cfg.scene.terrain_importer.terrain_generator.num_rows = config["eval"]["rows"]
         # cfg.scene.terrain_importer.terrain_generator.num_cols = config["eval"]["cols"]
         cfg.commands.velocity_command.ranges.lin_vel_x = (0.3, 1.0)
@@ -77,22 +79,22 @@ def config_env(cfg):
         cfg.commands.velocity_command.ranges.ang_vel_z = (0.2, 0.5)
 
     # cfg.scene.terrain_importer.terrain_generator.size = (config["scene"]["env_spacing"], config["scene"]["env_spacing"])
-    cfg.scene.env_spacing = config["scene"]["env_spacing"]
-    cfg.seed = config["env_config"]["seed"]
+    cfg.scene.env_spacing = env_config["scene"]["env_spacing"]
+    cfg.seed = env_config["env_config"]["seed"]
     return cfg
 
 def config_train(model):
-    model.learning_rate = get_linear_fn(config["train"]["learning_rate"]["start"], 
-        config["train"]["learning_rate"]["end"], 
-        config["train"]["learning_rate"]["end_fraction"]
+    model.learning_rate = get_linear_fn(env_config["train"]["learning_rate"]["start"], 
+        env_config["train"]["learning_rate"]["end"], 
+        env_config["train"]["learning_rate"]["end_fraction"]
     )
-    model.batch_size = config["train"]["batch_size"]
-    model.n_epochs = config["train"]["n_epochs"]
-    model.gamma = config["train"]["gamma"]
-    model.ent_coef = config["train"]["ent_coef"]
-    model.clip_range = lambda _: config["train"]["clip_range"] 
-    model.target_kl = config["train"]["target_kl"]
-    model.n_steps = config["train"]["n_steps"]
+    model.batch_size = env_config["train"]["batch_size"]
+    model.n_epochs = env_config["train"]["n_epochs"]
+    model.gamma = env_config["train"]["gamma"]
+    model.ent_coef = env_config["train"]["ent_coef"]
+    model.clip_range = lambda _: env_config["train"]["clip_range"] 
+    model.target_kl = env_config["train"]["target_kl"]
+    model.n_steps = env_config["train"]["n_steps"]
     return model
 
 def print_model_info(model):
@@ -120,7 +122,7 @@ def main():
     env = Sb3VecEnvWrapper(env, fast_variant=False)
     obs = env.reset()
     if not args.load:
-        env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0)
+        env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
         print("Fitting vec env running mean/std...")
         # for _ in tqdm(range(1000), desc="Fitting running mean/std"):  # Collect ~1000 steps to fit running mean/std
         #     actions = np.array([env.action_space.sample() for _ in range(env.num_envs)])
@@ -185,24 +187,33 @@ def main():
 
     # save_model_path,_ = get_latest_model_path(model_path, prefix)
     if not args.load :
+        policy_kwargs = dict(
+            net_arch=dict(
+                pi=[1024, 512, 256],  # Policy (Actor) network layers
+                vf=[1024, 512, 256]   # Value Function (Critic) network layers
+            ),
+            log_std_init=0.0,
+            full_std=True
+        )
         model = PPO(
             "MlpPolicy", 
             env, 
-            n_steps=config["train"]["n_steps"],
-            batch_size=config["train"]["batch_size"],
-            learning_rate=get_linear_fn(config["train"]["learning_rate"]["start"], 
-                config["train"]["learning_rate"]["end"], 
-                config["train"]["learning_rate"]["end_fraction"]
+            n_steps=env_config["train"]["n_steps"],
+            batch_size=env_config["train"]["batch_size"],
+            learning_rate=get_linear_fn(env_config["train"]["learning_rate"]["start"], 
+                env_config["train"]["learning_rate"]["end"], 
+                env_config["train"]["learning_rate"]["end_fraction"]
             ),
-            clip_range=config["train"]["clip_range"],
-            gamma=config["train"]["gamma"],
-            ent_coef=config["train"]["ent_coef"],
-            n_epochs=config["train"]["n_epochs"],
+            clip_range=env_config["train"]["clip_range"],
+            gamma=env_config["train"]["gamma"],
+            ent_coef=env_config["train"]["ent_coef"],
+            n_epochs=env_config["train"]["n_epochs"],
             verbose=1,
-            target_kl=config["train"]["target_kl"],
+            target_kl=env_config["train"]["target_kl"],
             use_sde=False,
             normalize_advantage=True,
-            policy_kwargs=dict(net_arch=[1024, 512, 256], log_std_init=0.0, full_std=True),  # Adjust the policy architecture if needed
+            policy_kwargs=policy_kwargs,
+            vf_coef=env_config["train"]["vf_coef"],  # Adjust the policy architecture if needed
             tensorboard_log=str(ROOT / "logs/ppo_pybullet_tensorboard/"),
         )
         # print("Loading BC policy weights into PPO model...")
@@ -240,9 +251,9 @@ def main():
         print(pyfiglet.figlet_format("---Training Mode---", font="slant"))
         time.sleep(2)
         callbacks = CallbackList([TensorboardCallback(), create_checkpoint_callback(args.load)])
-        total_timesteps = config["train"]["num_iterations"] * config["train"]["n_steps"] * config["train"]["num_envs"]
+        total_timesteps = env_config["train"]["num_iterations"] * env_config["train"]["n_steps"] * env_config["train"]["num_envs"]
         model.learn(total_timesteps=total_timesteps, reset_num_timesteps=not args.load, callback=callbacks)
-        save_path = config["save_config"]["save_path"] + config["save_config"]["save_prefix"] + time.strftime("%Y-%m-%d_%H-%M-%S")
+        save_path = env_config["save_config"]["save_path"] + env_config["save_config"]["save_prefix"] + time.strftime("%Y-%m-%d_%H-%M-%S")
         model.save(save_path)
     else:
         print(pyfiglet.figlet_format("---Evaluation Mode---", font="slant"))

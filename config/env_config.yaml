@@ -1,0 +1,36 @@
+
+scene:
+  env_spacing: 10
+env_config:
+  sim_dt: 0.001
+  decimation: 10
+  max_episode_length: 1000
+  episode_length_s: 10
+  seed: 42
+train:
+  num_envs: 4096
+  num_iterations: 1500
+  rows: 10
+  cols: 10
+  total_timesteps: 98e6
+  n_steps: 128
+  batch_size: 65_536
+  learning_rate:
+    start: 3.5e-4
+    end: 3.5e-4
+    end_fraction: 1.0
+  clip_range: 0.2
+  gamma: 0.992
+  ent_coef: 0.0025
+  n_epochs: 5
+  target_kl: 0.02
+  vf_coef: 2.8
+eval:
+  num_envs: 1
+  rows: 1
+  cols: 1
+
+
+save_config:
+  save_path: ../../models/isaac_models/
+  save_prefix: steve_ppo_model

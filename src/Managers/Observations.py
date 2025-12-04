@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 with open(ROOT / "config" / "steve_config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-joint_names = config["scene"]["joint_names"]
+joint_names = config["joint_names"]
 
 
 
@@ -31,18 +31,24 @@ def target_obs(env):
     joints = env.scene["steve"].data.joint_pos[:,joint_ids]
     target = env.scene["steve"].data.joint_pos_target[:,joint_ids]
     return (target - joints)
+def body_pos_b(env):
+    #keep orientation untouched and subtract root position from body positions
+    body_pos_w = env.scene["steve"].data.body_link_pose_w[:]
+    root_pos = env.scene["steve"].data.root_link_pose_w[:, :3]
+    
+    return body_pos_w[:, :3] - root_pos
 
 @configclass
 class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})  # must match CommandsCfg field name
-        root_linear_velocity  = ObsTerm(func=mdp.base_lin_vel,  params={"asset_cfg": SceneEntityCfg("steve")})
-        root_angular_velocity = ObsTerm(func=mdp.base_ang_vel, params={"asset_cfg": SceneEntityCfg("steve")})
-        root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")})
-        joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
-        joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)})
-        target_joint_pos = ObsTerm(func=target_obs)
+        root_linear_velocity  = ObsTerm(func=mdp.base_lin_vel,  params={"asset_cfg": SceneEntityCfg("steve")}) #3
+        root_angular_velocity = ObsTerm(func=mdp.base_ang_vel, params={"asset_cfg": SceneEntityCfg("steve")}) #6
+        root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")}) #3
+        joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)}) #29
+        joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)}) #29
+        # target_joint_pos = ObsTerm(func=target_obs)
         phase = ObsTerm(func=phase_obs, )
 
 

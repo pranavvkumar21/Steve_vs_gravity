@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 with open(ROOT / "config" / "steve_config.yaml", "r") as f:
     config = yaml.safe_load(f)
-joint_names = config["scene"]["joint_names"]
+joint_names = config["joint_names"]
 
 
 @configclass

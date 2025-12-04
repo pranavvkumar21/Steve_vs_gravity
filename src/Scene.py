@@ -31,8 +31,8 @@ G1_29DOF_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.9),
-        rot=(0.7071, 0, 0, 0.7071),
+        pos=(0.0, 0.0, 0.83),
+        # rot=(0.7071, 0, 0, 0.7071),
         joint_pos={
             ".*_hip_pitch_joint": -0.10,
             ".*_knee_joint": 0.30,
@@ -152,7 +152,7 @@ ROOT = Path(__file__).resolve().parent.parent
 with open(ROOT / "config" / "steve_config.yaml", 'r') as f:
     steve_config = yaml.safe_load(f)
 
-pattern = "(" + "|".join(steve_config["scene"]["body_contact_links"]) + ")"
+pattern = "(" + "|".join(steve_config["body_contact_links"]) + ")"
 
 
 class Steve_SceneCfg(InteractiveSceneCfg):

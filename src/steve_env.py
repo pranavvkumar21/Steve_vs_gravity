@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 if __name__ == "__main__":
     from isaaclab.app import AppLauncher
-    simulation_app = AppLauncher(headless=True, livestream=0).app
+    simulation_app = AppLauncher(headless=True, livestream=2).app
     
 
 import torch
@@ -16,6 +16,7 @@ from Managers.Actions import ActionsCfg
 from Managers.Events import EventsCfg
 from Managers.Commands import CommandsCfg
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from utils import SkeletonVisualizer
 from Scene import Steve_SceneCfg
 import numpy as np
 import imageio.v2 as imageio
@@ -38,7 +39,7 @@ def map_range_torch(x, in_min, in_max, out_min, out_max):
 
 @configclass
 class Steve_EnvCfg(ManagerBasedRLEnvCfg):
-    scene = Steve_SceneCfg(num_envs=4, env_spacing=5.0)
+    scene = Steve_SceneCfg(num_envs=1, env_spacing=5.0)
     observations = ObservationsCfg()
     rewards = RewardsCfg()
     terminations = TerminationsCfg()
@@ -51,8 +52,8 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 20
         self.sim.dt = 1.0 / (30 * self.decimation)
         self.sim.render_interval = self.decimation
-        self.max_episode_length = 10 * 30  # 10 seconds
-        self.episode_length_s = 10
+        self.max_episode_length = 3 * 30  # 3 seconds
+        self.episode_length_s = 3
         self.viewer.enable = True
         self.viewer.resolution = (1280, 720)
         self.viewer.eye = (8, 8, 8)
@@ -83,13 +84,17 @@ def main():
         env = ManagerBasedRLEnv(cfg)
         default_root_pose = env.scene["steve"].data.root_link_pose_w
         obs = env.reset()
+
+        env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
+
         
         print("mocap order")
         # print(list(JOINT_MAPPING.keys()))
         # print("robot joint order")s
         print('body names:')
         print(env.scene["steve"].data.body_names)
-        print('joint names:')
+        print('cmd_body_names:')
+        print(env.motion_manager.motions["walk"]['link_body_names'])
         # print(env.scene["steve"].data.joint_names)
         print("joint_limits:")
         # print(env.scene["steve"].data.default_joint_pos_limits)
@@ -98,13 +103,15 @@ def main():
         #joint name from config
         print("isaac nucleus dir:", ISAAC_NUCLEUS_DIR)
         print("isaaclab nucleus dir:", ISAACLAB_NUCLEUS_DIR)
-        config_jn = steve_config["scene"]["joint_names"]
-        for idx in range(len(env.motion_manager.motions["walk"]['joint_names_ordered'])):
-            name = env.motion_manager.motions["walk"]['joint_names_ordered'][idx]
-            print(f"mocap joint name: {name} -> robot joint name: {config_jn[idx]}")
-        # Playback loop
+        config_jn = steve_config["joint_names"]
+        for idx in range(len(env.motion_manager.motions["walk"]['joint_names'])):
+            name = env.motion_manager.motions["walk"]['joint_names'][idx]
+            # print(f"mocap joint name: {name} -> robot joint name: {config_jn[idx]}")
+
         for step in tqdm(range(1000), desc="Simulation Steps"):  # Run for many steps
-            
+            # Debug 2: Individual term values
+
+
             
             # frame_idx = env.cmd["frame_idx"]
             # print(frame_idx)
@@ -112,27 +119,50 @@ def main():
 
 
             # print("Current frame idx:", frame_idx)
+            # print("Reward term count:", len(env.reward_manager.get_active_iterable_terms(0)))
+
+            terms = env.reward_manager.get_active_iterable_terms(0)
+            # terms is a sequence of tuples (term_name, value)
+            for term_name, value in terms:
+                print(f"  Term: {term_name}, Value: {value}")
+
             
             # Step simulation
-            # root_pose =default_root_pose.clone()
-            # #use root orientation from commands
-            # root_pose[:, 3:] = env.cmd["root_orientation"]
+            root_pose = default_root_pose.clone()
             
-            joint_pos = env.cmd["joint_position"]
-            joint_vel = torch.zeros_like(env.cmd["joint_velocity"])
-            default_root_pose[:, 2] = 1.5
-            # # joint_vel = env.cmd["joint_velocity"]
-            # print("joint pos shape:", joint_pos.shape)
-            # print("pose values:", joint_pos[0] )
-            # env.scene["steve"].write_joint_position_to_sim(joint_pos, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
-            env.scene["steve"].set_joint_position_target(joint_pos, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
-            # env.scene["steve"].write_joint_velocity_to_sim(joint_vel, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
-            # env.scene["steve"].write_root_pose_to_sim(default_root_pose)
+            # Use the current frame data that's already been updated by action manager
+            current_joint_pos = env.cmd["joint_position"][0]
+            current_root_orient = env.cmd["root_orientation"][0]
+            
+            root_pose = env.scene["steve"].data.root_link_pose_w.clone()
+            env.scene["steve"].set_joint_position_target(current_joint_pos, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
+            root_pose[:, 3:] = current_root_orient
+            env.scene["steve"].write_root_pose_to_sim(root_pose)
+            body_pos_w = env.scene["steve"].data.body_pos_w.clone()
+            local_body_pos_cmd = env.cmd["local_body_position"][0]
+            # print("Local body positions command:", local_body_pos_cmd.shape)
+            # print("Body positions world:", body_pos_w.shape)
+            
+            # Synchronized skeleton visualization
+            current_frame_idx = int(env.cmd["frame_idx"][0].item())
+            current_pose = env.cmd["local_body_position"][0].clone()
+            root_pos = env.cmd["root_position"][0].clone()
+            
+            # Add root position to current pose  
+            current_pose[:, 0] += root_pos[0]
+            current_pose[:, 1] += root_pos[1]
+            current_pose[:, 2] += root_pos[2]
+
+            env.skeleton_viz.draw(current_pose)
+            # obs, rewards, dones, trunc, info = env.step(env.cmd["joint_position"])
             obs, rewards, dones, trunc, info = env.step(torch.zeros_like(env.action_manager.action))
-            
-            # Capture frame
+            # print("Reward:", rewards * 30)
+            # rewards[:] = env.rew_buf_raw[:, 0]  # Use ONLY position tracking term
+            # print("Forced single-term reward:", rewards)
+            # # Capture frame
             # frame_img = rgb.get_data()
             # writer.append_data(frame_img)
+
             
             # Print progress
             if step % 30 == 0:
