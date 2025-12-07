@@ -51,6 +51,14 @@ def init_cmd(env, env_ids):
     env.cmd["local_body_position"] = torch.zeros(E, mocap_num_bodies, 3, device=d)
     env.cmd["phase"] = torch.zeros(E,1, device=d)
     env.cmd["frame_idx"] = torch.zeros(E,1, device=d)
+    #get wrist joint names from motion manager
+    wrist_joint_names = [ name for name in env.motion_manager.motions["walk"]['joint_names'] if "wrist" in name.lower()]
+    print("Wrist joint names:", wrist_joint_names)
+    #joint liits of shape len E  joint_ids x 2
+    wrist_limits = torch.zeros(E, len(wrist_joint_names), 2, device=d)
+    ##gett joint indices of wrist in robot usin robot joint names
+    robot_wrist_joint_indices = [robot_joint_names.index(name) for name in wrist_joint_names]
+    env.scene["steve"].write_joint_position_limit_to_sim(wrist_limits, joint_ids=robot_wrist_joint_indices)
     
     # env.cmd["done"] = torch.zeros(E,1, device=d)
 
@@ -72,7 +80,7 @@ def reset_cmd(env, env_ids):
     
     # print("Resetting env ids:", env_ids)
     # # Sample initial motion frame for all env_ids at once
-    joint_pos, joint_vel, root_position, root_orient, local_body_position, phase, frame_idx = env.motion_manager.sample("walk", len(env_ids))
+    joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample("walk", len(env_ids))
     
     env.cmd["joint_position"][env_ids, :] = joint_pos.clone()
     env.cmd["joint_velocity"][env_ids, :] = joint_vel.clone()
@@ -92,6 +100,10 @@ def reset_cmd(env, env_ids):
     root_pose = env.scene["steve"].data.root_pose_w[env_ids, :].clone()
     root_pose[:, :3] = root_position.clone()
     root_pose[:, 3:] = root_orient.clone()
+    root_velocity = env.scene["steve"].data.root_link_vel_w[env_ids, :].clone()
+    root_velocity[:, :3] = root_lin_velocity.clone()
+    root_velocity[:, 3:] = root_ang_velocity.clone()
+    env.scene["steve"].write_root_link_velocity_to_sim(root_velocity.clone(), env_ids=env_ids)
     env.scene["steve"].write_root_pose_to_sim(root_pose, env_ids=env_ids)
     #write root orientation to sim
 

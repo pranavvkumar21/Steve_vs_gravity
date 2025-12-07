@@ -31,7 +31,7 @@ G1_29DOF_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.83),
+        pos=(0.0, 0.0, 0.85),
         # rot=(0.7071, 0, 0, 0.7071),
         joint_pos={
             ".*_hip_pitch_joint": -0.10,

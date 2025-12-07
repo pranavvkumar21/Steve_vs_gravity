@@ -106,7 +106,7 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     # alive = RewTerm(func=mdp.is_alive, weight=1.0)
     # height = RewTerm(func=mdp.flat_orientation_l2, params={"asset_cfg": SceneEntityCfg("steve")}, weight=1.0)
-    forward_vel = RewTerm(func=velocity_tracking, params={"key":"x", "slope":-3}, weight=1.0)
+    # forward_vel = RewTerm(func=velocity_tracking, params={"key":"x", "slope":-3}, weight=1.0)
     joint_pos_reward = RewTerm(func=joint_position_tracking, weight=config["joint_position_tracking"]["weight"])
     joint_vel_reward = RewTerm(func=joint_velocity_tracking, weight=config["joint_velocity_tracking"]["weight"])
     root_pos_reward = RewTerm(func=root_position_tracking, weight=config["root_position_tracking"]["weight"])

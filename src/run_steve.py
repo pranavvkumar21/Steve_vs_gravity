@@ -165,22 +165,22 @@ def main():
         # simulation_app.close()
 
 
-    if args.mode == "eval":
-        try:
-            import omni.kit.viewport.utility as vp_util
-            vp = vp_util.get_active_viewport()
-            rp_path = vp.get_render_product_path()
-        except Exception:
-            import omni.kit.viewport_legacy as vp_legacy
-            vp_win = vp_legacy.get_viewport_interface().get_viewport_window()
-            rp_path = vp_win.get_render_product_path()
+    # if args.mode == "eval":
+    #     try:
+    #         import omni.kit.viewport.utility as vp_util
+    #         vp = vp_util.get_active_viewport()
+    #         rp_path = vp.get_render_product_path()
+    #     except Exception:
+    #         import omni.kit.viewport_legacy as vp_legacy
+    #         vp_win = vp_legacy.get_viewport_interface().get_viewport_window()
+    #         rp_path = vp_win.get_render_product_path()
 
-        # 3 attach rgb annotator
-        rgb = rep.AnnotatorRegistry.get_annotator("rgb")
-        rgb.attach([rp_path])
+    #     # 3 attach rgb annotator
+    #     rgb = rep.AnnotatorRegistry.get_annotator("rgb")
+    #     rgb.attach([rp_path])
 
-        # 4 write frames during eval loop
-        writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
+    #     # 4 write frames during eval loop
+    #     writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
 
 
 
@@ -192,7 +192,7 @@ def main():
                 pi=[1024, 512, 256],  # Policy (Actor) network layers
                 vf=[1024, 512, 256]   # Value Function (Critic) network layers
             ),
-            log_std_init=0.0,
+            log_std_init=-2.0,
             full_std=True
         )
         model = PPO(
@@ -211,6 +211,7 @@ def main():
             verbose=1,
             target_kl=env_config["train"]["target_kl"],
             use_sde=False,
+            sde_sample_freq=4,
             normalize_advantage=True,
             policy_kwargs=policy_kwargs,
             vf_coef=env_config["train"]["vf_coef"],  # Adjust the policy architecture if needed
@@ -266,8 +267,8 @@ def main():
             action, _states = model.predict(obs,deterministic=True)
             obs, rewards, dones, info = env.step(action)
             print(f"Step {i+1} completed.")
-            frame = rgb.get_data()
-            writer.append_data(frame)
+            # frame = rgb.get_data()
+            # writer.append_data(frame)
 
             # print(frame.shape)
             # print(info[0])
@@ -276,7 +277,7 @@ def main():
             #     obs = env.reset()
         end_time = time.time()
         elapsed_time = end_time - start_time
-        writer.close()
+        # writer.close()
         print(f"Elapsed time for 1024 steps: {elapsed_time:.2f}")
         env.close()
         simulation_app.close()

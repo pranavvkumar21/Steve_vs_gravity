@@ -8,12 +8,12 @@ env_config:
   episode_length_s: 10
   seed: 42
 train:
-  num_envs: 4096
-  num_iterations: 1500
+  num_envs: 2048
+  num_iterations: 6000
   rows: 10
   cols: 10
   total_timesteps: 98e6
-  n_steps: 128
+  n_steps: 64
   batch_size: 65_536
   learning_rate:
     start: 3.5e-4

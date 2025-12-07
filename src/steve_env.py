@@ -137,7 +137,7 @@ def main():
             root_pose = env.scene["steve"].data.root_link_pose_w.clone()
             env.scene["steve"].set_joint_position_target(current_joint_pos, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
             root_pose[:, 3:] = current_root_orient
-            env.scene["steve"].write_root_pose_to_sim(root_pose)
+            # env.scene["steve"].write_root_pose_to_sim(root_pose)
             body_pos_w = env.scene["steve"].data.body_pos_w.clone()
             local_body_pos_cmd = env.cmd["local_body_position"][0]
             # print("Local body positions command:", local_body_pos_cmd.shape)

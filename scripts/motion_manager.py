@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import random
 import pickle
-from isaaclab.utils.math import quat_mul, quat_apply
+from isaaclab.utils.math import quat_mul, quat_apply, quat_box_minus
 import matplotlib.pyplot as plt
 class MotionManager:
     def __init__(self, device='cuda:0'):
@@ -26,6 +26,9 @@ class MotionManager:
         self.motions[motion_name]["link_body_names"] = data["link_body_list"]
         num_frames = self.motions[motion_name]['root_orientations'].shape[0]
 
+        #change root orientations from xyzw to wxyz
+        self.motions[motion_name]['root_orientations'] = self.motions[motion_name]['root_orientations'][:, [3,0,1,2]]
+
         # Apply fixed rotations to root orientations to make z-up and x-forward
         y_rot90 = torch.tensor([0.7071, 0, 0.7071, 0], device=self.device).repeat(num_frames, 1)
         x_rot90 = torch.tensor([0.7071, 0.7071, 0, 0], device=self.device).repeat(num_frames, 1)
@@ -36,13 +39,13 @@ class MotionManager:
         #     self.motions[motion_name]['root_orientations'],
         #     y_rot90  # First rotation
         # )
+        # self.motions[motion_name]['root_orientations'] = quat_mul(
+        #     self.motions[motion_name]['root_orientations'],
+        #     x_rot90  # Second rotation
+        # )
         self.motions[motion_name]['root_orientations'] = quat_mul(
             self.motions[motion_name]['root_orientations'],
-            x_rot90  # Second rotation
-        )
-        self.motions[motion_name]['root_orientations'] = quat_mul(
-            self.motions[motion_name]['root_orientations'],
-            z_rot180  # Third rotation
+            z_rot90  # Third rotation
         )
 
         #apply  same rotations to root positions as well
@@ -61,9 +64,24 @@ class MotionManager:
         )
 
         self.motions[motion_name]['joint_velocities'] = torch.zeros_like(self.motions[motion_name]['joint_positions'])
-        fps =30
+        self.motions[motion_name]['root_lin_velocities'] = torch.zeros_like(self.motions[motion_name]['root_positions'])
+        self.motions[motion_name]['root_ang_velocities'] = torch.zeros_like(self.motions[motion_name]['root_positions'])
+
+        fps  = data['fps']
         for i in range(0, self.motions[motion_name]['joint_positions'].shape[0]-1):
             self.motions[motion_name]['joint_velocities'][i] = (self.motions[motion_name]['joint_positions'][i+1] - self.motions[motion_name]['joint_positions'][i]) * fps
+            self.motions[motion_name]['root_lin_velocities'][i] = (self.motions[motion_name]['root_positions'][i+1] - self.motions[motion_name]['root_positions'][i]) * fps
+
+            # #compute angular velocity from quaternion difference
+            q_current = self.motions[motion_name]['root_orientations'][i]
+            q_next = self.motions[motion_name]['root_orientations'][i+1]
+
+            delta_rot = quat_box_minus(q_next.unsqueeze(0), q_current.unsqueeze(0))
+            self.motions[motion_name]['root_ang_velocities'][i] = delta_rot.squeeze(0) * fps
+        #set last velocity to be same as second last
+        self.motions[motion_name]['joint_velocities'][-1] = self.motions[motion_name]['joint_velocities'][-2]
+        self.motions[motion_name]['root_lin_velocities'][-1] = self.motions[motion_name]['root_lin_velocities'][-2]
+        self.motions[motion_name]['root_ang_velocities'][-1] = self.motions[motion_name]['root_ang_velocities'][-2]
         
         self.motions[motion_name]['frame_count'] = self.motions[motion_name]['joint_positions'].shape[0]
         self.motions[motion_name]['is_cyclic'] = is_cyclic
@@ -99,6 +117,8 @@ class MotionManager:
                 motion['joint_velocities'][idx],
                 motion['root_positions'][idx],
                 motion['root_orientations'][idx],
+                motion['root_lin_velocities'][idx],
+                motion['root_ang_velocities'][idx],
                 motion['local_body_positions'][idx],
                 motion['phase'][idx],
                 idx
@@ -110,6 +130,8 @@ class MotionManager:
                 motion['joint_velocities'][frame_indices],
                 motion['root_positions'][frame_indices],
                 motion['root_orientations'][frame_indices],
+                motion['root_lin_velocities'][frame_indices],
+                motion['root_ang_velocities'][frame_indices],
                 motion['local_body_positions'][frame_indices],
                 motion['phase'][frame_indices],
                 frame_indices
@@ -184,7 +206,7 @@ class MotionManager:
             body_link_indices.append(idx)
         self.motions[motion_name]['body_link_indices'] = body_link_indices
         return body_link_indices
-    def move_reference_root_to_origin(self, motion_name,default_root_pos, height_offset=0.82):
+    def move_reference_root_to_origin(self, motion_name,default_root_pos, height_offset=0.84):
 
         root_positions = self.motions[motion_name]['root_positions']
         # offset = root_positions[0] - default_root_pos

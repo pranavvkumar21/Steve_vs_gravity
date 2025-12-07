@@ -126,20 +126,20 @@ class PhaseAction(ActionTerm):
 
 @configclass
 class ActionsCfg:
-    joint_pos = mdp.JointPositionToLimitsActionCfg(
-        asset_name = "steve",
-        joint_names = steve_config["joint_names"],
-        scale=1.0,
-        rescale_to_limits=True
-    )
+    # joint_pos = mdp.JointPositionToLimitsActionCfg(
+    #     asset_name = "steve",
+    #     joint_names = steve_config["joint_names"],
+    #     scale=1.0,
+    #     rescale_to_limits=True
+    # )
     # joint_pos = mdp.JointPositionActionCfg(
     #     asset_name = "steve",
     #     joint_names = steve_config["joint_names"],
     #     scale=1.0,
     # )
-    # joint_pos = mdp.RelativeJointPositionActionCfg(
-    #     asset_name = "steve",
-    #     joint_names = steve_config["joint_names"],
-    #     scale=0.1,
-    # )
+    joint_pos = mdp.RelativeJointPositionActionCfg(
+        asset_name = "steve",
+        joint_names = steve_config["joint_names"],
+        scale=18*torch.pi/180,
+    )
     phase = ActionTermCfg(class_type=PhaseAction, asset_name="steve", clip={".*":(-1.0, 1.0)})

@@ -27,16 +27,24 @@ def phase_obs(env, key="phase", use_trig=False):
     return torch.cat([torch.sin(ph), torch.cos(ph)], dim=-1) if use_trig else ph
 
 def target_obs(env):
-    joint_ids = [env.scene["steve"].data.joint_names.index(name) for name in joint_names]
-    joints = env.scene["steve"].data.joint_pos[:,joint_ids]
-    target = env.scene["steve"].data.joint_pos_target[:,joint_ids]
-    return (target - joints)
+    if not hasattr(env, "motion_manager") or "walk" not in env.motion_manager.motions:
+        print("Warning: target joint positions not initialized yet!")
+        return torch.zeros((env.scene.num_envs, len(config["joint_names"])), device=env.device)
+    joint_names = env.scene["steve"].data.joint_names
+    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
+    
+    current_joint_pos = env.scene["steve"].data.joint_pos[:, joint_ids]
+    target = env.cmd["joint_position"]
+
+    return (target - current_joint_pos)
+
 def body_pos_b(env):
     #keep orientation untouched and subtract root position from body positions
     body_pos_w = env.scene["steve"].data.body_link_pose_w[:]
     root_pos = env.scene["steve"].data.root_link_pose_w[:, :3]
     
     return body_pos_w[:, :3] - root_pos
+
 
 @configclass
 class ObservationsCfg:
@@ -48,7 +56,8 @@ class ObservationsCfg:
         root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")}) #3
         joint_pos = ObsTerm(func=mdp.joint_pos, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)}) #29
         joint_vel = ObsTerm(func=mdp.joint_vel, params={"asset_cfg": SceneEntityCfg("steve",joint_names=joint_names)}) #29
-        # target_joint_pos = ObsTerm(func=target_obs)
+        target_joint_pos = ObsTerm(func=target_obs)
+
         phase = ObsTerm(func=phase_obs, )
 
 
