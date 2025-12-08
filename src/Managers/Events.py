@@ -8,10 +8,8 @@ import torch
 from pathlib import Path
 import sys
 ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(ROOT / "scripts"))
 sys.path.append(str(ROOT))
 
-from joint_mappings import JOINT_MAPPING
 from motion_manager import MotionManager
 from utils import get_normalised_joint_weights
 
@@ -51,23 +49,19 @@ def init_cmd(env, env_ids):
     env.cmd["local_body_position"] = torch.zeros(E, mocap_num_bodies, 3, device=d)
     env.cmd["phase"] = torch.zeros(E,1, device=d)
     env.cmd["frame_idx"] = torch.zeros(E,1, device=d)
+
+    #we limit the wrist joints cause its useless in locomotion for now
+
     #get wrist joint names from motion manager
     wrist_joint_names = [ name for name in env.motion_manager.motions["walk"]['joint_names'] if "wrist" in name.lower()]
     print("Wrist joint names:", wrist_joint_names)
-    #joint liits of shape len E  joint_ids x 2
+    #joint limits of shape len E  joint_ids x 2
     wrist_limits = torch.zeros(E, len(wrist_joint_names), 2, device=d)
     ##gett joint indices of wrist in robot usin robot joint names
     robot_wrist_joint_indices = [robot_joint_names.index(name) for name in wrist_joint_names]
     env.scene["steve"].write_joint_position_limit_to_sim(wrist_limits, joint_ids=robot_wrist_joint_indices)
     
-    # env.cmd["done"] = torch.zeros(E,1, device=d)
 
-    # joint_pos, joint_vel, phase, frame_idx = env.motion_manager.sample("walk", E)
-    
-    # env.cmd["joint_position"] = joint_pos
-    # env.cmd["joint_velocity"] = joint_vel
-    # env.cmd["phase"] = phase
-    # env.cmd["frame_idx"] = frame_idx
 
 
 def reset_cmd(env, env_ids):
@@ -78,8 +72,8 @@ def reset_cmd(env, env_ids):
     if hasattr(env, 'action_manager') and hasattr(env.action_manager, 'reset'):
         env.action_manager.reset(env_ids)
     
-    # print("Resetting env ids:", env_ids)
-    # # Sample initial motion frame for all env_ids at once
+
+        # Sample initial motion frame for all env_ids at once
     joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample("walk", len(env_ids))
     
     env.cmd["joint_position"][env_ids, :] = joint_pos.clone()
@@ -89,11 +83,8 @@ def reset_cmd(env, env_ids):
     env.cmd["local_body_position"][env_ids, :, :] = local_body_position.clone()
     env.cmd["phase"][env_ids, 0] = phase.clone()
     env.cmd["frame_idx"][env_ids, 0] = frame_idx.float()
-    # print("Reset frame idx for env ids", env_ids, "to", frame_idx.float())
-    # Write to sim
-    # get joinit index  of all joints in motion manager order from env scene joint names
-    # print(f"len of motion manager joinit names ordered: {len(env.motion_manager.motions['walk']['joint_names'])}")
-    
+
+        # Write to sim
     joint_ids = env.motion_manager.motions["walk"]['joint_indices']
     env.scene["steve"].write_joint_position_to_sim(joint_pos.clone(), joint_ids=joint_ids, env_ids=env_ids)
     env.scene["steve"].write_joint_velocity_to_sim(joint_vel.clone(), joint_ids=joint_ids, env_ids=env_ids)
@@ -105,15 +96,9 @@ def reset_cmd(env, env_ids):
     root_velocity[:, 3:] = root_ang_velocity.clone()
     env.scene["steve"].write_root_link_velocity_to_sim(root_velocity.clone(), env_ids=env_ids)
     env.scene["steve"].write_root_pose_to_sim(root_pose, env_ids=env_ids)
-    #write root orientation to sim
-
-    # print("resetting env ids", env_ids, "pos:", pos[env_ids, :])
-
 
     
 @configclass
 class EventsCfg:
     startup_cmd = EventTerm(func=init_cmd, mode="startup")
     reset_cmd = EventTerm(func=reset_cmd, mode="reset", params={})
-    # post_init = EventTerm(func=post_init, mode="reset", params={})
-    # pre_startup = EventTerm(func=prestartup, mode="prestartup", params={})

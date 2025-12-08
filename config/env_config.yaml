@@ -16,8 +16,8 @@ train:
   n_steps: 64
   batch_size: 65_536
   learning_rate:
-    start: 3.5e-4
-    end: 3.5e-4
+    start: 6.5e-5
+    end: 6.5e-5
     end_fraction: 1.0
   clip_range: 0.2
   gamma: 0.992

@@ -10,8 +10,19 @@ def body_touch(env):
     #     print("Body contact time_out:")
     return in_contact
 
-# need to add a termination condition if the clip reaches the end of the motion
-# will do that later
+
+def motion_end_time_out(env):
+    #if not is_cyclic
+    motion_name = env.motion_name
+    if not env.motion_manager.motions[motion_name]['is_cyclic']:
+        # get frame idx from env.cmd
+        frame_idx = env.cmd["frame_idx"]  # [E, 1]
+        mocap_length = env.motion_manager.motions["walk"]['joint_positions'].shape[0]
+        # check if any env has reached the end of the motion
+        time_out = (frame_idx[:, 0] >= mocap_length -1)
+        return time_out
+    else:
+        return torch.zeros(env.scene.num_envs, dtype=torch.bool, device=env.device)
 
 @configclass
 class TerminationsCfg:
@@ -22,3 +33,6 @@ class TerminationsCfg:
 
     # (2) Body touch
     body_touch = DoneTerm(func=body_touch, time_out=True)
+
+    # (3) Motion end time out
+    # motion_end_time_out = DoneTerm(func=motion_end_time_out, time_out=True)

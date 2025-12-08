@@ -6,6 +6,7 @@ scripts/__pycache__/
 videos/
 .env
 src/Managers/__pycache__/
+Third_Party/
 logs/
 models/
 !logs/.gitkeep

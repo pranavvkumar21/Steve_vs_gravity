@@ -6,7 +6,7 @@ joint_weights:
   elbow: 0.2     # 2 x 1 joints 2 total
   hip: 0.5  # 2 x 3 joints 6 total
   knee: 0.3  # 2 x 1 joints 2 total
-  wrist: 0.0 # 2 x 3 joints 6 total
+  # wrist: 0.0 # 2 x 3 joints 6 total
   ankle: 0.2 # 2 x 2 joints 4 total
   waist: 0.5   # 3 joints 
 joint_names:
@@ -29,16 +29,16 @@ joint_names:
   - left_shoulder_roll_joint
   - left_shoulder_yaw_joint
   - left_elbow_joint
-  - left_wrist_roll_joint
-  - left_wrist_pitch_joint
-  - left_wrist_yaw_joint
+  # - left_wrist_roll_joint
+  # - left_wrist_pitch_joint
+  # - left_wrist_yaw_joint
   - right_shoulder_pitch_joint
   - right_shoulder_roll_joint
   - right_shoulder_yaw_joint
   - right_elbow_joint
-  - right_wrist_roll_joint
-  - right_wrist_pitch_joint
-  - right_wrist_yaw_joint
+  # - right_wrist_roll_joint
+  # - right_wrist_pitch_joint
+  # - right_wrist_yaw_joint
 
 body_contact_links:
   - pelvis

@@ -50,7 +50,7 @@ def body_pos_b(env):
 class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
-        commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})  # must match CommandsCfg field name
+        # commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})  # must match CommandsCfg field name
         root_linear_velocity  = ObsTerm(func=mdp.base_lin_vel,  params={"asset_cfg": SceneEntityCfg("steve")}) #3
         root_angular_velocity = ObsTerm(func=mdp.base_ang_vel, params={"asset_cfg": SceneEntityCfg("steve")}) #6
         root_gravity = ObsTerm(func=mdp.projected_gravity, params={"asset_cfg": SceneEntityCfg("steve")}) #3

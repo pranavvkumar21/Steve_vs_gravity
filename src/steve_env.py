@@ -27,7 +27,6 @@ import yaml
 from tqdm import tqdm
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(ROOT / "scripts"))
-from joint_mappings import JOINT_MAPPING
 from motion_manager import MotionManager
 with open(ROOT / "config" / "steve_config.yaml", 'r') as f:
     steve_config = yaml.safe_load(f)
@@ -61,48 +60,25 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
 
 
 def main():
-    try:
-        from omni.kit.viewport.utility import get_active_viewport
-
-        vp = get_active_viewport()
-        rp_path = vp.get_render_product_path()
-        pyfiglet.figlet_format("Steve Demo", font="slant")
-    except:
-        print("Could not get replicator viewport. Running in headless mode.")
 
 
     # # Attach rgb annotator
-    # import omni.replicator.core as rep
-    # rgb = rep.AnnotatorRegistry.get_annotator("rgb")
-    # rgb.attach([rp_path])
+    import omni.replicator.core as rep
 
     # # Video writer
-    # writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
+    writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
 
     try:
         cfg = Steve_EnvCfg()
         env = ManagerBasedRLEnv(cfg)
         default_root_pose = env.scene["steve"].data.root_link_pose_w
         obs = env.reset()
+        camera_path = Steve_EnvCfg.viewer.cam_prim_path
+        rgb = rep.AnnotatorRegistry.get_annotator("rgb")
+        rgb.attach([camera_path])
 
         env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
 
-        
-        print("mocap order")
-        # print(list(JOINT_MAPPING.keys()))
-        # print("robot joint order")s
-        print('body names:')
-        print(env.scene["steve"].data.body_names)
-        print('cmd_body_names:')
-        print(env.motion_manager.motions["walk"]['link_body_names'])
-        # print(env.scene["steve"].data.joint_names)
-        print("joint_limits:")
-        # print(env.scene["steve"].data.default_joint_pos_limits)
-        
-        #loop through joint motion manager and print joint names and corresponding
-        #joint name from config
-        print("isaac nucleus dir:", ISAAC_NUCLEUS_DIR)
-        print("isaaclab nucleus dir:", ISAACLAB_NUCLEUS_DIR)
         config_jn = steve_config["joint_names"]
         for idx in range(len(env.motion_manager.motions["walk"]['joint_names'])):
             name = env.motion_manager.motions["walk"]['joint_names'][idx]
@@ -111,20 +87,10 @@ def main():
         for step in tqdm(range(1000), desc="Simulation Steps"):  # Run for many steps
             # Debug 2: Individual term values
 
-
-            
-            # frame_idx = env.cmd["frame_idx"]
-            # print(frame_idx)
-            # Get current frame index from env commands
-
-
-            # print("Current frame idx:", frame_idx)
-            # print("Reward term count:", len(env.reward_manager.get_active_iterable_terms(0)))
-
-            terms = env.reward_manager.get_active_iterable_terms(0)
+            # terms = env.reward_manager.get_active_iterable_terms(0)
             # terms is a sequence of tuples (term_name, value)
-            for term_name, value in terms:
-                print(f"  Term: {term_name}, Value: {value}")
+            # for term_name, value in terms:
+            #     print(f"  Term: {term_name}, Value: {value}")
 
             
             # Step simulation
@@ -140,8 +106,7 @@ def main():
             # env.scene["steve"].write_root_pose_to_sim(root_pose)
             body_pos_w = env.scene["steve"].data.body_pos_w.clone()
             local_body_pos_cmd = env.cmd["local_body_position"][0]
-            # print("Local body positions command:", local_body_pos_cmd.shape)
-            # print("Body positions world:", body_pos_w.shape)
+
             
             # Synchronized skeleton visualization
             current_frame_idx = int(env.cmd["frame_idx"][0].item())
@@ -156,12 +121,10 @@ def main():
             env.skeleton_viz.draw(current_pose)
             # obs, rewards, dones, trunc, info = env.step(env.cmd["joint_position"])
             obs, rewards, dones, trunc, info = env.step(torch.zeros_like(env.action_manager.action))
-            # print("Reward:", rewards * 30)
-            # rewards[:] = env.rew_buf_raw[:, 0]  # Use ONLY position tracking term
-            # print("Forced single-term reward:", rewards)
+
             # # Capture frame
-            # frame_img = rgb.get_data()
-            # writer.append_data(frame_img)
+            frame_img = rgb.get_data()
+            writer.append_data(frame_img)
 
             
             # Print progress
@@ -173,7 +136,7 @@ def main():
         print("An exception occurred:", e)
         traceback.print_exc()
     finally:
-        # writer.close()
+        writer.close()
         env.close()
         simulation_app.close()
 

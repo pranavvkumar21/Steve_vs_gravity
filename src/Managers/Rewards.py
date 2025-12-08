@@ -30,13 +30,11 @@ def joint_position_tracking(env):
     cmd_joint_pos = env.cmd["joint_position"]
     joint_weights = env.cmd["joint_weights"]
     
-    # position_error_sq = torch.sum((current_joint_pos - cmd_joint_pos) ** 2, dim=1)
+        # weighted joint position error
     joint_error = torch.sum((current_joint_pos - cmd_joint_pos) ** 2 * joint_weights.unsqueeze(0), dim=1)
     mean_joint_error = torch.mean((current_joint_pos - cmd_joint_pos))
-    #debug
-    # print("Joint error:", joint_error)
-    # print("mean error:", mean_joint_error)
-    # root orientation error
+
+        # root orientation error
     root_quat = env.scene["steve"].data.root_link_pose_w[:,3:]
     cmd_quat = env.cmd["root_orientation"]  # [E, 4]
     dot = torch.abs(torch.sum(root_quat * cmd_quat, dim=1)).clamp(-1, 1)
@@ -45,9 +43,7 @@ def joint_position_tracking(env):
     num_joints = len(joint_ids)
     alpha = config["joint_position_tracking"]["alpha"] * num_joints /15.0
 
-
     reward = torch.exp(-alpha * l2_error)
-    # print("Joint position tracking ?reward:", reward)
     
     return reward
 
@@ -68,8 +64,7 @@ def end_effector_tracking(env):
     robot_global_positions = env.scene["steve"].data.body_pos_w[:, end_effector_robot_ids, :]
     robot_local_positions = robot_global_positions - env.scene["steve"].data.root_link_pose_w[:, :3].unsqueeze(1)
     cmd_local_positions  = env.cmd["local_body_position"][:, end_effector_mocap_ids, :]
-    # print("robot local positions:", robot_local_positions.shape)
-    # print("cmd local positions:", cmd_local_positions.shape)
+
     alpha = config["end_effector_tracking"]["alpha"]
     pos_err = torch.sum((robot_local_positions - cmd_local_positions) ** 2, dim=(1,2))
     reward = torch.exp(-alpha * pos_err)
@@ -81,14 +76,15 @@ def joint_velocity_tracking(env):
     current_joint_vel = env.scene["steve"].data.joint_vel[:, joint_ids]
     cmd_joint_vel = env.cmd["joint_velocity"]    
     joint_weights = env.cmd["joint_weights"]
-    # Compute squared velocity difference per joint, weighted by joint_weights
+
+        # Compute squared velocity difference per joint, weighted by joint_weights
     diff = (current_joint_vel - cmd_joint_vel) ** 2
     weighted_diff = diff * joint_weights.unsqueeze(0)  # broadcast weights over batch
 
-    # Sum weighted squared error over joints per timestep
+        # Sum weighted squared error over joints per timestep
     vel_err = torch.sum(weighted_diff, dim=1)
 
-    # Scale factor from DeepMimic: 0.1 / 15 * num_joints
+        # Scale factor from DeepMimic: 0.1 / 15 * num_joints
     num_joints = len(joint_ids)
     vel_scale = 0.1 / 15 * num_joints
     alpha = config["joint_velocity_tracking"]["alpha"]
@@ -104,8 +100,7 @@ def joint_velocity_tracking(env):
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # alive = RewTerm(func=mdp.is_alive, weight=1.0)
-    # height = RewTerm(func=mdp.flat_orientation_l2, params={"asset_cfg": SceneEntityCfg("steve")}, weight=1.0)
+
     # forward_vel = RewTerm(func=velocity_tracking, params={"key":"x", "slope":-3}, weight=1.0)
     joint_pos_reward = RewTerm(func=joint_position_tracking, weight=config["joint_position_tracking"]["weight"])
     joint_vel_reward = RewTerm(func=joint_velocity_tracking, weight=config["joint_velocity_tracking"]["weight"])

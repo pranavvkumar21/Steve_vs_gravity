@@ -29,39 +29,32 @@ class MotionManager:
         #change root orientations from xyzw to wxyz
         self.motions[motion_name]['root_orientations'] = self.motions[motion_name]['root_orientations'][:, [3,0,1,2]]
 
-        # Apply fixed rotations to root orientations to make z-up and x-forward
-        y_rot90 = torch.tensor([0.7071, 0, 0.7071, 0], device=self.device).repeat(num_frames, 1)
-        x_rot90 = torch.tensor([0.7071, 0.7071, 0, 0], device=self.device).repeat(num_frames, 1)
+        #rotate root orientations and positions by 90 degrees about z axis to align with isaac sim coordinate system
         z_rot90 = torch.tensor([0.7071, 0, 0, 0.7071], device=self.device).repeat(num_frames, 1)
-        z_rot180 = torch.tensor([0, 0, 0, 1], device=self.device).repeat(num_frames, 1)
-        # Apply the rotations tp root orientations
-        # self.motions[motion_name]['root_orientations'] = quat_mul(
-        #     self.motions[motion_name]['root_orientations'],
-        #     y_rot90  # First rotation
-        # )
-        # self.motions[motion_name]['root_orientations'] = quat_mul(
-        #     self.motions[motion_name]['root_orientations'],
-        #     x_rot90  # Second rotation
-        # )
+
         self.motions[motion_name]['root_orientations'] = quat_mul(
             self.motions[motion_name]['root_orientations'],
-            z_rot90  # Third rotation
+            z_rot90  
         )
 
-        #apply  same rotations to root positions as well
-        # self.motions[motion_name]['root_positions'] = quat_apply(
-        #     y_rot90,
-        #     self.motions[motion_name]['root_positions']
-        # )
-        # self.motions[motion_name]['root_positions'] = quat_apply(
-        #     x_rot90,
-        #     self.motions[motion_name]['root_positions']
-        # )
-        # #rotate root positions 90 degrees around z axis
         self.motions[motion_name]['root_positions'] = quat_apply(
             z_rot90,
             self.motions[motion_name]['root_positions']
         )
+        # remove "pelvis" from joint positions and joint names
+        self.motions[motion_name]['joint_names'] = [name for name in data['joint_names_ordered'] if name != "pelvis"]
+
+        #we remove wrist joints from motion data to make action space smaller
+        num_joints = self.motions[motion_name]['joint_positions'].shape[1]
+
+        #find indices of wrist joints in joint names ordered
+        wrist_indices = [i for i, name in enumerate(self.motions[motion_name]['joint_names']) if "wrist" in name.lower()]
+        keep_indices = [i for i in range(num_joints) if i not in wrist_indices]
+
+        # remove wrist joints from joint positions
+        self.motions[motion_name]['joint_positions'] = self.motions[motion_name]['joint_positions'][:, keep_indices]
+
+        self.motions[motion_name]['joint_names'] = [self.motions[motion_name]['joint_names'][i] for i in keep_indices]
 
         self.motions[motion_name]['joint_velocities'] = torch.zeros_like(self.motions[motion_name]['joint_positions'])
         self.motions[motion_name]['root_lin_velocities'] = torch.zeros_like(self.motions[motion_name]['root_positions'])
@@ -87,7 +80,7 @@ class MotionManager:
         self.motions[motion_name]['is_cyclic'] = is_cyclic
 
         #remove "pelvis" from joint names ordered
-        self.motions[motion_name]['joint_names'] = [name for name in data['joint_names_ordered'] if name != "pelvis"]
+        
 
         print(f"Loaded motion '{motion_name}' with {self.motions[motion_name]['frame_count']} frames.")
         print("joint pos shape:", self.motions[motion_name]['joint_positions'].shape)
@@ -137,15 +130,7 @@ class MotionManager:
                 frame_indices
             )
     def reorder_joints(self, motion_name, robot_joint_names, mapped_joint_names):
-        """
-        Reorders joint_positions and joint_velocities in motions[motion_name]
-        according to the order in robot_joint_names.
-        
-        Arguments:
-            motion_name (str): name of the loaded motion
-            robot_joint_names (list): list of joint names in desired/robot order
-            mapped_joint_names (list): list of joint names (keys from JOINT_MAPPING), matches data order
-        """
+
         motion = self.motions[motion_name]
         # Create index mapping from robot_joint_names to mapped_joint_names
         index_map = [mapped_joint_names.index(name) for name in robot_joint_names]
