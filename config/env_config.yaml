@@ -9,15 +9,15 @@ env_config:
   seed: 42
 train:
   num_envs: 2048
-  num_iterations: 6000
+  num_iterations: 8000
   rows: 10
   cols: 10
   total_timesteps: 98e6
   n_steps: 64
   batch_size: 65_536
   learning_rate:
-    start: 6.5e-5
-    end: 6.5e-5
+    start: 3.5e-4
+    end: 1.0e-4
     end_fraction: 1.0
   clip_range: 0.2
   gamma: 0.992

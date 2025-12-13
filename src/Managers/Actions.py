@@ -115,6 +115,17 @@ class PhaseAction(ActionTerm):
             self.env.cmd["root_position"][:] = root_pos
             
             self.env.cmd["phase"][:, 0] = motion['phase'][next_frame_idx_int].clone()
+
+            current_frame_idx = int(self.env.cmd["frame_idx"][0].item())
+            current_pose = self.env.cmd["local_body_position"][0].clone()
+            root_pos = self.env.cmd["root_position"][0].clone()
+            
+            # Add root position to current pose  
+            current_pose[:, 0] += root_pos[0]
+            current_pose[:, 1] += root_pos[1]
+            current_pose[:, 2] += root_pos[2]
+
+            # self.env.skeleton_viz.draw(current_pose)
         self.sim_step = (self.sim_step + 1) % self.env.cfg.decimation
 
     def reset(self, env_ids: torch.Tensor) -> None:

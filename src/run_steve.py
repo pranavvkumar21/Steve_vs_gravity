@@ -87,10 +87,12 @@ def config_env(cfg):
     return cfg
 
 def config_train(model):
-    model.learning_rate = get_linear_fn(env_config["train"]["learning_rate"]["start"], 
+    # Create new learning rate function each time
+    new_lr_fn = get_linear_fn(env_config["train"]["learning_rate"]["start"], 
         env_config["train"]["learning_rate"]["end"], 
         env_config["train"]["learning_rate"]["end_fraction"]
     )
+    model.learning_rate = new_lr_fn
     model.batch_size = env_config["train"]["batch_size"]
     model.n_epochs = env_config["train"]["n_epochs"]
     model.gamma = env_config["train"]["gamma"]
@@ -99,11 +101,21 @@ def config_train(model):
     model.target_kl = env_config["train"]["target_kl"]
     model.n_steps = env_config["train"]["n_steps"]
 
+    # Force update the optimizer with current learning rate
+    current_lr = new_lr_fn(1.0)  # Get the current LR value
+    print(f"Updating learning rate to: {current_lr}")
+    
+    # Recreate optimizer with new learning rate
     model.policy.optimizer = model.policy.optimizer_class(
         model.policy.parameters(),
-        lr=model.learning_rate(1), 
+        lr=current_lr,
         **model.policy.optimizer_kwargs
     )
+    
+    # Also update the lr_schedule if it exists
+    if hasattr(model, 'lr_schedule'):
+        model.lr_schedule = new_lr_fn
+    
     return model
 
 def print_model_info(model):
@@ -130,12 +142,14 @@ def main():
     
     # Create the environment
     env = gym.make("Steve-v0", cfg=cfg, render_mode="rgb_array" if args.mode == "eval" else None)
+
     env = Sb3VecEnvWrapper(env, fast_variant=False)
     obs = env.reset()
 
+    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
     # If training with behavior cloning, wrap with VecNormalize and fit running mean/std
     if not args.load and args.bc:
-        env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+
         print("Fitting vec env running mean/std...")
         for _ in tqdm(range(1000), desc="Fitting running mean/std"):  # Collect ~1000 steps to fit running mean/std
             actions = np.array([env.action_space.sample() for _ in range(env.num_envs)])
@@ -187,14 +201,20 @@ def main():
         # simulation_app.close()
 
 
-    if args.mode == "eval":
-        import omni.replicator.core as rep
-        rp_path = Steve_EnvCfg.viewer.cam_prim_path
-        # 1 set up video writer
-        writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
-        # 2 attach rgb annotator
-        rgb = rep.AnnotatorRegistry.get_annotator("rgb")
-        rgb.attach([rp_path])
+    # if args.mode == "eval":
+    #     # while hasattr(env, 'venv'):
+    #     #     base_env = env.venv
+    #     # if hasattr(base_env, 'unwrapped'):
+    #     #     base_env = base_env.unwrapped
+    #     # #get viewer's camera path
+
+    #     import omni.replicator.core as rep
+    #     rp_path = "/OmniverseKit_Persp"
+    #     # 1 set up video writer
+    #     writer = imageio.get_writer(str(ROOT / "videos" / "eval_run.mp4"), fps=30)
+    #     # 2 attach rgb annotator
+    #     rgb = rep.AnnotatorRegistry.get_annotator("rgb")
+    #     rgb.attach([rp_path])
 
     if not args.load :
 
@@ -294,7 +314,6 @@ def main():
 
         print(pyfiglet.figlet_format("---Evaluation Mode---", font="slant"))
         time.sleep(2)
-
         # reset all envs
         obs = env.reset()
         print(obs.shape)
@@ -306,14 +325,14 @@ def main():
             print(f"Step {i+1} completed.")
 
 
-            frame = rgb.get_data()
-            writer.append_data(frame)
+            # frame = rgb.get_data()
+            # writer.append_data(frame)
 
 
         end_time = time.time()
         elapsed_time = end_time - start_time
 
-        writer.close()
+        # writer.close()
 
         print(f"Elapsed time for 1024 steps: {elapsed_time:.2f}")
 

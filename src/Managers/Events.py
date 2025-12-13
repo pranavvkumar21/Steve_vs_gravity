@@ -11,14 +11,14 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT))
 
 from motion_manager import MotionManager
-from utils import get_normalised_joint_weights
+from utils import get_normalised_joint_weights, SkeletonVisualizer
 
 def init_cmd(env, env_ids):
     E = env.scene.num_envs
     # num_joints = env.scene["steve"].num_joints
     d = env.device
     env.cmd = {}
-
+    
     env.motion_manager = MotionManager(device='cuda:0')
     env.motion_name = "walk"
     env.motion_manager.load_motion("walk", str(ROOT / "data/retargeted_lafan_h1/walk1_sub1.pkl"),is_cyclic=True)
@@ -61,7 +61,7 @@ def init_cmd(env, env_ids):
     robot_wrist_joint_indices = [robot_joint_names.index(name) for name in wrist_joint_names]
     env.scene["steve"].write_joint_position_limit_to_sim(wrist_limits, joint_ids=robot_wrist_joint_indices)
     
-
+    # env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
 
 
 def reset_cmd(env, env_ids):

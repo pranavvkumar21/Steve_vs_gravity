@@ -51,11 +51,15 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 20
         self.sim.dt = 1.0 / (30 * self.decimation)
         self.sim.render_interval = self.decimation
-        self.max_episode_length = 3 * 30  # 3 seconds
-        self.episode_length_s = 3
+        # for evaluation
+        self.max_episode_length = 40 * 30  # 40 seconds
+        self.episode_length_s = 40
+        # to be used in training
+        # self.max_episode_length = 3 * 30  # 3 seconds
+        # self.episode_length_s = 3
         self.viewer.enable = True
         self.viewer.resolution = (1280, 720)
-        self.viewer.eye = (8, 8, 8)
+        self.viewer.eye = (12, 1, 2)
         self.viewer.lookat = (0.0, 0.0, 0.5)
 
 
@@ -73,9 +77,15 @@ def main():
         env = ManagerBasedRLEnv(cfg)
         default_root_pose = env.scene["steve"].data.root_link_pose_w
         obs = env.reset()
-        camera_path = Steve_EnvCfg.viewer.cam_prim_path
+        from omni.kit.viewport.utility import get_active_viewport
+        viewport = get_active_viewport()
+        rep_path = viewport.render_product_path
         rgb = rep.AnnotatorRegistry.get_annotator("rgb")
-        rgb.attach([camera_path])
+        print("RGB annotator path:", rep_path)
+        # 
+        # for i in range(10):
+        #     env.step(torch.zeros_like(env.action_manager.action))
+        # rgb.attach([rep_path])
 
         env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
 
@@ -123,8 +133,8 @@ def main():
             obs, rewards, dones, trunc, info = env.step(torch.zeros_like(env.action_manager.action))
 
             # # Capture frame
-            frame_img = rgb.get_data()
-            writer.append_data(frame_img)
+            # frame_img = rgb.get_data()
+            # writer.append_data(frame_img)
 
             
             # Print progress

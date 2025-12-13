@@ -5,7 +5,7 @@ from isaaclab.assets import AssetBaseCfg
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
-from isaaclab.sensors import ContactSensorCfg
+from isaaclab.sensors import ContactSensorCfg, CameraCfg
 from pathlib import Path
 import yaml
 from isaaclab_assets import G1_MINIMAL_CFG  # Changed from HUMANOID_CFG
@@ -176,6 +176,18 @@ class Steve_SceneCfg(InteractiveSceneCfg):
         force_threshold=1.0,      
         debug_vis=False,
     )
+
+    # In Steve_EnvCfg class
+    # tiled_camera = CameraCfg(
+    #     "{ENV_REGEX_NS}/RecorderCamera", 
+    #     offset=CameraCfg.OffsetCfg(pos=(3.0, 0.0, 2.0), rot=(0.9239, 0.0, 0.3827, 0.0), convention="world"), # LookAt (0,0,0) roughly
+    #     update_period=0.0,
+    #     height=720,
+    #     width=1280,
+    #     data_types=["rgb"],
+    #     spawn=sim_utils.PinholeCameraCfg(focal_length=24.0)
+    # )
+
 
     # l_foot_contact = ContactSensorCfg(
     #     prim_path="{ENV_REGEX_NS}/Steve/left_foot",
