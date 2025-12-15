@@ -1,0 +1,16 @@
+{
+    "walk": {
+        "motion_name": "walk",
+        "file_path": "data/retargeted_lafan_h1/walk1_sub1.pkl",
+        "is_cyclic": true,
+        "frame_range": [135, 180]
+    },
+    "kick": {
+        "motion_name": "kick",
+        "file_path": "data/retargeted_lafan_h1/fight_sport1_sub4.pkl",
+        "is_cyclic": false,
+        "frame_range": [1038, 1112]
+    }
+    
+
+}

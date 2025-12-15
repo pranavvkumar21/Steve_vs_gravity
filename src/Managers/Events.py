@@ -20,19 +20,20 @@ def init_cmd(env, env_ids):
     env.cmd = {}
     
     env.motion_manager = MotionManager(device='cuda:0')
-    env.motion_name = "walk"
-    env.motion_manager.load_motion("walk", str(ROOT / "data/retargeted_lafan_h1/walk1_sub1.pkl"),is_cyclic=True)
+    env.motion_name = "kick"
+    frame_range  = (1038, 1112)
+    env.motion_manager.load_motion("kick", str(ROOT / "data/retargeted_lafan_h1/fight_sport1_sub4.pkl"),is_cyclic=False,frame_range=frame_range)
     
     robot_joint_names = env.scene["steve"].data.joint_names
 
-    joint_indices = env.motion_manager.get_joint_indices("walk", robot_joint_names)
-    env.motion_manager.move_reference_root_to_origin("walk", env.scene["steve"].data.default_root_state[0][:3])
+    joint_indices = env.motion_manager.get_joint_indices(env.motion_name, robot_joint_names)
+    env.motion_manager.move_reference_root_to_origin(env.motion_name, env.scene["steve"].data.default_root_state[0][:3])
 
     print(joint_indices)
-    print("shape of joint positions for walk motion:",env.motion_manager.motions["walk"]['joint_positions'].shape)
+    print(f"shape of joint positions for {env.motion_name}:",env.motion_manager.motions[env.motion_name]['joint_positions'].shape)
     
-    mocap_num_joints = env.motion_manager.motions["walk"]['joint_positions'].shape[1]
-    mocap_num_bodies = len(env.motion_manager.motions["walk"]['link_body_names'])
+    mocap_num_joints = env.motion_manager.motions[env.motion_name]['joint_positions'].shape[1]
+    mocap_num_bodies = len(env.motion_manager.motions[env.motion_name]['link_body_names'])
 
     root_weight, joint_weights = get_normalised_joint_weights()
 
@@ -41,7 +42,7 @@ def init_cmd(env, env_ids):
     env.cmd["root_weight"] = torch.tensor(root_weight, device=d)
 
     # print("Initialized joint position command with shape:", env.cmd["joint_position"].shape)
-    print(env.motion_manager.motions["walk"]['joint_names'])
+    print(env.motion_manager.motions[env.motion_name]['joint_names'])
     env.cmd["joint_position"] = torch.zeros(E, mocap_num_joints, device=d)
     env.cmd["joint_velocity"] = torch.zeros(E, mocap_num_joints, device=d)
     env.cmd["root_orientation"] = torch.zeros(E, 4, device=d)
@@ -53,7 +54,7 @@ def init_cmd(env, env_ids):
     #we limit the wrist joints cause its useless in locomotion for now
 
     #get wrist joint names from motion manager
-    wrist_joint_names = [ name for name in env.motion_manager.motions["walk"]['joint_names'] if "wrist" in name.lower()]
+    wrist_joint_names = [ name for name in env.motion_manager.motions[env.motion_name]['joint_names'] if "wrist" in name.lower()]
     print("Wrist joint names:", wrist_joint_names)
     #joint limits of shape len E  joint_ids x 2
     wrist_limits = torch.zeros(E, len(wrist_joint_names), 2, device=d)
@@ -61,7 +62,7 @@ def init_cmd(env, env_ids):
     robot_wrist_joint_indices = [robot_joint_names.index(name) for name in wrist_joint_names]
     env.scene["steve"].write_joint_position_limit_to_sim(wrist_limits, joint_ids=robot_wrist_joint_indices)
     
-    # env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
+    # env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions[env.motion_name]['link_body_names'], device=env.device)
 
 
 def reset_cmd(env, env_ids):
@@ -74,7 +75,7 @@ def reset_cmd(env, env_ids):
     
 
         # Sample initial motion frame for all env_ids at once
-    joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample("walk", len(env_ids))
+    joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample(env.motion_name, len(env_ids), till_percent=1.0)
     
     env.cmd["joint_position"][env_ids, :] = joint_pos.clone()
     env.cmd["joint_velocity"][env_ids, :] = joint_vel.clone()
@@ -85,7 +86,7 @@ def reset_cmd(env, env_ids):
     env.cmd["frame_idx"][env_ids, 0] = frame_idx.float()
 
         # Write to sim
-    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
+    joint_ids = env.motion_manager.motions[env.motion_name]['joint_indices']
     env.scene["steve"].write_joint_position_to_sim(joint_pos.clone(), joint_ids=joint_ids, env_ids=env_ids)
     env.scene["steve"].write_joint_velocity_to_sim(joint_vel.clone(), joint_ids=joint_ids, env_ids=env_ids)
     root_pose = env.scene["steve"].data.root_pose_w[env_ids, :].clone()

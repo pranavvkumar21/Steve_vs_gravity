@@ -9,7 +9,7 @@ class MotionManager:
         self.device = device
         self.motions = {}
 
-    def load_motion(self, motion_name, file_path, is_cyclic=True):
+    def load_motion(self, motion_name, file_path, is_cyclic=True, frame_range=(0, -1)):
         # load npz file
         with open(file_path, 'rb') as f:
             data = pickle.load(f)
@@ -21,7 +21,8 @@ class MotionManager:
             'local_body_positions': torch.tensor(data['local_body_pos'], device=self.device, dtype=torch.float32),
         }
         for key in self.motions[motion_name]:
-            self.motions[motion_name][key] = self.motions[motion_name][key][135:180,:]
+            #for walk frame range is 135 to 180
+            self.motions[motion_name][key] = self.motions[motion_name][key][frame_range[0]:frame_range[1], :]
 
         self.motions[motion_name]["link_body_names"] = data["link_body_list"]
         num_frames = self.motions[motion_name]['root_orientations'].shape[0]
@@ -96,11 +97,13 @@ class MotionManager:
         #create tensor of shape (T,) with values linearly spaced between 0 and 1 using frame count
         self.motions[motion_name]['phase'] = torch.linspace(0, 1, steps=self.motions[motion_name]['frame_count'], device=self.device)
 
-    def sample(self, motion_name, batch_size=1):
+    def sample(self, motion_name, batch_size=1, till_percent=1.0):
         motion = self.motions[motion_name]
+
+        max_frame = int(motion['frame_count'] * till_percent)
         
         # Generate random frame indices for all samples at once
-        frame_indices = torch.randint(0, motion['frame_count'], (batch_size,), device=self.device)
+        frame_indices = torch.randint(0, max_frame, (batch_size,), device=self.device)
         
         if batch_size == 1:
             # Return single samples (no batch dimension)

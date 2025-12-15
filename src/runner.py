@@ -18,11 +18,11 @@ def create_runner_cfg():
         num_mini_batches=4,
         gamma=0.992,
         lam=0.95,
-        entropy_coef=0.005,
+        entropy_coef=0.001,
         desired_kl=0.02,
         clip_param=0.2,
         normalize_advantage_per_mini_batch=True,
-        value_loss_coef=2.8,
+        value_loss_coef=1.0,
         max_grad_norm=1.0,
         
     )
@@ -36,7 +36,7 @@ def create_runner_cfg():
         activation="elu",
     )
     runner_cfg = RslRlOnPolicyRunnerCfg(
-        experiment_name = "make_steve_walk",
+        experiment_name = "steve_kick",
         run_name = "steve_godspeed_1",
         # log_root_path = str(ROOT/"logs"),
         seed = 42,

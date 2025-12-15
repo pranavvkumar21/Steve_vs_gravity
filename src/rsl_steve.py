@@ -65,9 +65,10 @@ def config_env(cfg):
         cfg.scene.terrain_importer.terrain_generator.size = (config["scene"]["env_spacing"], config["scene"]["env_spacing"])
 
     if args.mode == "eval":
-        cfg.commands.velocity_command.ranges.lin_vel_x = (0.5, 0.5) # Fixed speed for eval
-        cfg.commands.velocity_command.ranges.lin_vel_y = (0.0, 0.0)
-        cfg.commands.velocity_command.ranges.ang_vel_z = (0.0, 0.0)
+        pass
+        # cfg.commands.velocity_command.ranges.lin_vel_x = (0.5, 0.5) # Fixed speed for eval
+        # cfg.commands.velocity_command.ranges.lin_vel_y = (0.0, 0.0)
+        # cfg.commands.velocity_command.ranges.ang_vel_z = (0.0, 0.0)
 
     cfg.scene.env_spacing = env_config["scene"]["env_spacing"]
     cfg.seed = env_config["env_config"]["seed"]
@@ -100,7 +101,8 @@ def main():
         agent_cfg = vars(runner_cfg_obj)
 
     # Override log directory to ensure it goes where you expect
-    log_dir = Path(ROOT / "logs" / "rsl_rl")
+    
+    log_dir = Path(ROOT / "logs" / "steve_kick")
     agent_cfg["log_root_path"] = str(log_dir)
 
     # 4. Initialize RSL_RL Runner
@@ -138,6 +140,9 @@ def main():
             print(f"Loading model from: {resume_path}")
             # load() signature: load(path, load_optimizer=True)
             runner.load(resume_path)
+            runner.alg.value_loss_coef = 1.0
+            print("Model loaded successfully.")
+            print(f"Set value_loss_coef to {runner.alg.value_loss_coef}")
 
     # 6. Execution Loop
     if args.mode == "train":
@@ -217,8 +222,8 @@ def main():
                     robot_pos = base_env.scene["steve"].data.root_pos_w[0, :3].cpu().numpy()
                     
                     # Calculate Camera Position
-                    # Follow from 3m back, 2m side, 2m up
-                    camera_offset = np.array([-3.0, -2.0, 2.0]) 
+                    # Follow from 5m back, 2m side, 2m up
+                    camera_offset = np.array([5.0, 1.0, 2.0]) 
                     eye = robot_pos + camera_offset
                     
                     # Look at the robot

@@ -24,7 +24,7 @@ def velocity_tracking(env, key="x", slope=-3):
 
 def joint_position_tracking(env):
     joint_names = env.scene["steve"].data.joint_names
-    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
+    joint_ids = env.motion_manager.motions[env.motion_name]['joint_indices']
     
     current_joint_pos = env.scene["steve"].data.joint_pos[:, joint_ids]
     cmd_joint_pos = env.cmd["joint_position"]
@@ -58,7 +58,7 @@ def root_position_tracking(env):
 def end_effector_tracking(env):
     end_effector_names = config["end_effector_tracking"]["end_effector_links"]
     body_names = env.scene["steve"].data.body_names
-    cmd_body_names = env.motion_manager.motions["walk"]['link_body_names']
+    cmd_body_names = env.motion_manager.motions[env.motion_name]['link_body_names']
     end_effector_robot_ids = [body_names.index(name) for name in end_effector_names]
     end_effector_mocap_ids = [cmd_body_names.index(name) for name in end_effector_names]
     robot_global_positions = env.scene["steve"].data.body_pos_w[:, end_effector_robot_ids, :]
@@ -72,7 +72,7 @@ def end_effector_tracking(env):
     return reward
 
 def joint_velocity_tracking(env):
-    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
+    joint_ids = env.motion_manager.motions[env.motion_name]['joint_indices']
     current_joint_vel = env.scene["steve"].data.joint_vel[:, joint_ids]
     cmd_joint_vel = env.cmd["joint_velocity"]    
     joint_weights = env.cmd["joint_weights"]

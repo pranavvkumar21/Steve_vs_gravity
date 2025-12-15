@@ -17,9 +17,12 @@ def motion_end_time_out(env):
     if not env.motion_manager.motions[motion_name]['is_cyclic']:
         # get frame idx from env.cmd
         frame_idx = env.cmd["frame_idx"]  # [E, 1]
-        mocap_length = env.motion_manager.motions["walk"]['joint_positions'].shape[0]
+        mocap_length = env.motion_manager.motions[motion_name]['joint_positions'].shape[0]
         # check if any env has reached the end of the motion
         time_out = (frame_idx[:, 0] >= mocap_length -1)
+        ##print true if any env has timed out
+        # if time_out.any():
+        #     print("Motion end time_out:", time_out)
         return time_out
     else:
         return torch.zeros(env.scene.num_envs, dtype=torch.bool, device=env.device)
@@ -35,4 +38,4 @@ class TerminationsCfg:
     body_touch = DoneTerm(func=body_touch, time_out=True)
 
     # (3) Motion end time out
-    # motion_end_time_out = DoneTerm(func=motion_end_time_out, time_out=True)
+    motion_end_time_out = DoneTerm(func=motion_end_time_out, time_out=True)

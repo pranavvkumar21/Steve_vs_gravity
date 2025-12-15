@@ -7,7 +7,6 @@ lateral_velocity:
 angular_velocity:
   slope: -1.5
   weight: 1.5
-
 joint_position_tracking:
   weight: 1
   alpha: 2.0

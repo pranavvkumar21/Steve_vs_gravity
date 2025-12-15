@@ -59,7 +59,7 @@ class Steve_EnvCfg(ManagerBasedRLEnvCfg):
         # self.episode_length_s = 3
         self.viewer.enable = True
         self.viewer.resolution = (1280, 720)
-        self.viewer.eye = (12, 1, 2)
+        self.viewer.eye = (4, 4, 2)
         self.viewer.lookat = (0.0, 0.0, 0.5)
 
 
@@ -87,11 +87,11 @@ def main():
         #     env.step(torch.zeros_like(env.action_manager.action))
         # rgb.attach([rep_path])
 
-        env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions["walk"]['link_body_names'], device=env.device)
+        env.skeleton_viz = SkeletonVisualizer(env.motion_manager.motions[env.motion_name]['link_body_names'], device=env.device)
 
         config_jn = steve_config["joint_names"]
-        for idx in range(len(env.motion_manager.motions["walk"]['joint_names'])):
-            name = env.motion_manager.motions["walk"]['joint_names'][idx]
+        for idx in range(len(env.motion_manager.motions[env.motion_name]['joint_names'])):
+            name = env.motion_manager.motions[env.motion_name]['joint_names'][idx]
             # print(f"mocap joint name: {name} -> robot joint name: {config_jn[idx]}")
 
         for step in tqdm(range(1000), desc="Simulation Steps"):  # Run for many steps
@@ -111,7 +111,7 @@ def main():
             current_root_orient = env.cmd["root_orientation"][0]
             
             root_pose = env.scene["steve"].data.root_link_pose_w.clone()
-            env.scene["steve"].set_joint_position_target(current_joint_pos, joint_ids = env.motion_manager.motions["walk"]['joint_indices'])
+            # env.scene["steve"].set_joint_position_target(current_joint_pos, joint_ids = env.motion_manager.motions[env.motion_name]['joint_indices'])
             root_pose[:, 3:] = current_root_orient
             # env.scene["steve"].write_root_pose_to_sim(root_pose)
             body_pos_w = env.scene["steve"].data.body_pos_w.clone()

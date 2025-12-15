@@ -27,11 +27,11 @@ def phase_obs(env, key="phase", use_trig=False):
     return torch.cat([torch.sin(ph), torch.cos(ph)], dim=-1) if use_trig else ph
 
 def target_obs(env):
-    if not hasattr(env, "motion_manager") or "walk" not in env.motion_manager.motions:
+    if not hasattr(env, "motion_manager") :
         print("Warning: target joint positions not initialized yet!")
         return torch.zeros((env.scene.num_envs, len(config["joint_names"])), device=env.device)
     joint_names = env.scene["steve"].data.joint_names
-    joint_ids = env.motion_manager.motions["walk"]['joint_indices']
+    joint_ids = env.motion_manager.motions[env.motion_name]['joint_indices']
     
     current_joint_pos = env.scene["steve"].data.joint_pos[:, joint_ids]
     target = env.cmd["joint_position"]
