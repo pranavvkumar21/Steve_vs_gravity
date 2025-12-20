@@ -22,13 +22,13 @@ def create_runner_cfg():
         desired_kl=0.02,
         clip_param=0.2,
         normalize_advantage_per_mini_batch=True,
-        value_loss_coef=1.0,
+        value_loss_coef=2.8,
         max_grad_norm=1.0,
         
     )
     policy_cfg = RslRlPpoActorCriticCfg(
-        init_noise_std=0.26,
-        # noise_std_type="scalar",
+        init_noise_std=0.15,
+        noise_std_type="log",
         actor_obs_normalization=True,
         critic_obs_normalization=True,
         actor_hidden_dims=[1024, 512, 256],
