@@ -45,7 +45,7 @@ from rsl_rl.runners import OnPolicyRunner
 
 # Import your config generator
 from runner import create_runner_cfg
-
+from utils import log_metadata
 ROOT = Path(__file__).resolve().parent.parent
 
 # Load environment configs
@@ -101,9 +101,18 @@ def main():
         agent_cfg = vars(runner_cfg_obj)
 
     # Override log directory to ensure it goes where you expect
-    
-    log_dir = Path(ROOT / "logs" / "steve_kick")
+    experiment_name = agent_cfg["experiment_name"]
+    #create log dir if not exists
+    os.makedirs(ROOT / "logs" / experiment_name, exist_ok=True)
+    # Get existing run folders to determine run number
+    run_number = list((ROOT / "logs" / experiment_name).glob("run_*"))
+    run_number = len(run_number) + 1
+    run_name = f"run_{run_number:02d}"
+    agent_cfg["run_name"] = run_name
+    log_dir = Path(ROOT / "logs" / experiment_name / run_name)
     agent_cfg["log_root_path"] = str(log_dir)
+    print(f"Logging to: {log_dir}")
+
 
     # 4. Initialize RSL_RL Runner
     print(f"Initializing RSL_RL Runner with device: {env.device}")
@@ -140,9 +149,9 @@ def main():
             print(f"Loading model from: {resume_path}")
             # load() signature: load(path, load_optimizer=True)
             runner.load(resume_path)
-            runner.alg.value_loss_coef = 1.0
-            print("Model loaded successfully.")
-            print(f"Set value_loss_coef to {runner.alg.value_loss_coef}")
+
+    # Log metadata about this run
+    log_metadata(runner, log_dir=ROOT/"logs"/agent_cfg["experiment_name"])
 
     # 6. Execution Loop
     if args.mode == "train":
