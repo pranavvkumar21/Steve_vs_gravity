@@ -10,6 +10,18 @@
         "file_path": "data/retargeted_lafan_h1/fight_sport1_sub4.pkl",
         "is_cyclic": false,
         "frame_range": [1038, 1112]
+    },
+    "jump_kick": {
+        "motion_name": "jump_kick",
+        "file_path": "data/retargeted_lafan_h1/fight_sport1_sub4.pkl",
+        "is_cyclic": false,
+        "frame_range": [855, 927]
+    },
+    "punch": {
+        "motion_name": "punch",
+        "file_path": "data/retargeted_lafan_h1/fight_sport1_sub4.pkl",
+        "is_cyclic": true,
+        "frame_range": [1100, 1153]
     }
     
 

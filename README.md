@@ -4,6 +4,8 @@ _Experimental RL + Imitation project for "Steve" the Untitree robot—learning t
 
 🚧 **Work in Progress** 🚧
 
+![Steve punch](videos/steve_steve_punch_run_02_chk.gif) ![Steve Walk](videos/steve_steve_walk_run_01_chk.gif)
+
 ## Overview
 
 Steve vs Gravity trains a **Unitree G1** humanoid robot to perform natural locomotion by imitating motion capture data. The project uses **PPO** with **residual joint position actions** (not absolute positions) to learn robust walking and dynamic movements.
