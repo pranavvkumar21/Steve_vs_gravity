@@ -3,7 +3,6 @@ src/__pycache__/
 scripts/AMCParser
 scripts/GMR
 scripts/__pycache__/
-videos/
 .env
 src/Managers/__pycache__/
 Third_Party/
@@ -11,3 +10,4 @@ logs/
 models/
 !logs/.gitkeep
 !models/.gitkeep
+videos/*.mp4
