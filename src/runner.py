@@ -13,7 +13,7 @@ with open(ROOT/"config"/"runner_config.yaml", 'r') as f:
 def create_runner_cfg():
     algorithm_cfg = RslRlPpoAlgorithmCfg(
         class_name="PPO",
-        learning_rate=3.5e-4,
+        learning_rate=2.5e-4,
         num_learning_epochs=4,
         num_mini_batches=4,
         gamma=0.992,
@@ -22,7 +22,7 @@ def create_runner_cfg():
         desired_kl=0.02,
         clip_param=0.2,
         normalize_advantage_per_mini_batch=True,
-        value_loss_coef=2.8,
+        value_loss_coef=0.5,
         max_grad_norm=1.0,
         
     )
@@ -36,7 +36,7 @@ def create_runner_cfg():
         activation="elu",
     )
     runner_cfg = RslRlOnPolicyRunnerCfg(
-        experiment_name = "steve_kick",
+        experiment_name = "steve_jump_kick",
         run_name = "steve_godspeed_1",
         # log_root_path = str(ROOT/"logs"),
         seed = 42,

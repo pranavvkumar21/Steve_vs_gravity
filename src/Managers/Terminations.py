@@ -1,6 +1,7 @@
 import isaaclab.envs.mdp as mdp
 from isaaclab.utils import configclass
 from isaaclab.managers import TerminationTermCfg as DoneTerm
+import torch
 
 def body_touch(env):
     data = env.scene.sensors["body_contact"].data

@@ -9,11 +9,11 @@ def log_metadata(runner, log_dir=ROOT/"logs"):
     #check if file exists
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    current_learing_iteration = runner.current_learing_iteration
+    current_learning_iteration = runner.current_learning_iteration
     runner_cfg = runner.cfg
-    experiment_name = runner_cfg.experiment_name
-    run_name = runner_cfg.run_name
-    seed = runner_cfg.seed
+    experiment_name = runner_cfg["experiment_name"]
+    run_name = runner_cfg["run_name"]
+    seed = runner_cfg["seed"]
     #timestamp needs to be pretty format readable with YY-MM-DD_HH-MM-SS
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     alg_cfg = runner_cfg["algorithm"]
@@ -24,8 +24,9 @@ def log_metadata(runner, log_dir=ROOT/"logs"):
         "run_name": run_name,
         "seed": seed,
         "timestamp": timestamp,
-        "algorithm_cfg": alg_cfg.to_dict(),
-        "policy_cfg": policy_cfg.to_dict()
+        "learning_iteration": current_learning_iteration,
+        "algorithm_cfg": alg_cfg,
+        "policy_cfg": policy_cfg
     }
     log_path = Path(log_dir) / f"{experiment_name}_metadata.json"
     #append new entry to json file

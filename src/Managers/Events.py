@@ -6,9 +6,14 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.sim.schemas import MassPropertiesCfg, modify_mass_properties
 import torch
 from pathlib import Path
+import json
 import sys
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT))
+
+# load experiments json config
+with open(ROOT / "config/experiments.json", 'r') as f:
+    experiments_cfg = json.load(f)
 
 from motion_manager import MotionManager
 from utils import get_normalised_joint_weights, SkeletonVisualizer
@@ -20,9 +25,9 @@ def init_cmd(env, env_ids):
     env.cmd = {}
     
     env.motion_manager = MotionManager(device='cuda:0')
-    env.motion_name = "kick"
-    frame_range  = (1038, 1112)
-    env.motion_manager.load_motion("kick", str(ROOT / "data/retargeted_lafan_h1/fight_sport1_sub4.pkl"),is_cyclic=False,frame_range=frame_range)
+    env.motion_name = "jump_kick"
+    frame_range  = experiments_cfg[env.motion_name]["frame_range"]
+    env.motion_manager.load_motion(env.motion_name, str(ROOT / experiments_cfg[env.motion_name]["file_path"]),is_cyclic=experiments_cfg[env.motion_name]["is_cyclic"],frame_range=frame_range)
     
     robot_joint_names = env.scene["steve"].data.joint_names
 
@@ -75,7 +80,7 @@ def reset_cmd(env, env_ids):
     
 
         # Sample initial motion frame for all env_ids at once
-    joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample(env.motion_name, len(env_ids), till_percent=1.0)
+    joint_pos, joint_vel, root_position, root_orient, root_lin_velocity, root_ang_velocity, local_body_position, phase, frame_idx = env.motion_manager.sample(env.motion_name, len(env_ids), till_percent=0.9)
     
     env.cmd["joint_position"][env_ids, :] = joint_pos.clone()
     env.cmd["joint_velocity"][env_ids, :] = joint_vel.clone()

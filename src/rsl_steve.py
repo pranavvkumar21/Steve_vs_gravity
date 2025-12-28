@@ -106,7 +106,13 @@ def main():
     os.makedirs(ROOT / "logs" / experiment_name, exist_ok=True)
     # Get existing run folders to determine run number
     run_number = list((ROOT / "logs" / experiment_name).glob("run_*"))
-    run_number = len(run_number) + 1
+    if args.load:
+        if len(run_number) == 0:
+            print(f"No existing runs found for experiment {experiment_name} to load from.")
+            sys.exit(1)
+        run_number = len(run_number)
+    else:
+        run_number = len(run_number) + 1
     run_name = f"run_{run_number:02d}"
     agent_cfg["run_name"] = run_name
     log_dir = Path(ROOT / "logs" / experiment_name / run_name)
@@ -171,7 +177,8 @@ def main():
         # import ctypes
 
         # Setup Video Writer
-        video_path = str(ROOT / "videos" / f"steve_run_{time.strftime('%Y%m%d_%H%M%S')}.mp4")
+        
+        video_path = str(ROOT / "videos" / f"steve_{agent_cfg['experiment_name']}_{agent_cfg['run_name']}_chk.mp4")
         os.makedirs(os.path.dirname(video_path), exist_ok=True)
         print(f"Recording to {video_path}...")
         writer = imageio.get_writer(video_path, fps=30)
@@ -214,7 +221,7 @@ def main():
         base_env = env.unwrapped
         # camera_controller = ViewportCameraController(base_env, viewport_api)
         with torch.no_grad():
-            for i in range(500):
+            for i in range(200):
                 # 1. Step Physics
                 actions = policy(obs)
                 obs, rewards, dones, infos = env.step(actions)

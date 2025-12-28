@@ -1,3 +1,4 @@
-from normalise_weights import *
-from skeleton_viz import *
-from log_metadata import *
+
+from utils.normalise_weights import *
+from utils.skeleton_viz import *
+from utils.log_metadata import *
